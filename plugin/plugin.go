@@ -21,6 +21,7 @@ import (
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
+	"github.com/gx-org/gx/build/importers/embedpkg"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/importers/localfs"
 	"github.com/gx-org/gx/stdlib"
@@ -34,9 +35,17 @@ func New(name string) (*api.Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
+	var importer importers.Importer
+	if localImporter != nil {
+		importer = localImporter
+	} else {
+		// No Go module can be found from the current working directory,
+		// fallback to embedded files in the binary.
+		importer = embedpkg.New()
+	}
 	bld := builder.New(importers.NewCacheLoader(
 		stdlib.Importer(pjrtstdlib.Stdlib),
-		localImporter,
+		importer,
 	))
 	return NewWithBuilder(name, bld)
 }
