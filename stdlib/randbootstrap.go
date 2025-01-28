@@ -19,25 +19,26 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
-	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	"github.com/gx-org/gx/golang/binder/gobindings/types"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/proxies"
 	"github.com/gx-org/gx/interp/state"
 )
 
 type randBootstrap struct {
 	context interp.Context
-	call    state.CallAt
+	call    elements.CallAt
 	errF    fmterr.FileSet
 
-	seed state.NumericalElement
+	seed elements.NumericalElement
 	rand *rand.Rand
-	next func() (state.NumericalElement, error)
+	next func() (elements.NumericalElement, error)
 }
 
 var _ state.Element = (*randBootstrap)(nil)
@@ -46,17 +47,31 @@ func (rb *randBootstrap) Type() ir.Type {
 	return ir.BuiltinType{Impl: rb}
 }
 
+func (rb *randBootstrap) Flatten() ([]state.Element, error) {
+	return []state.Element{rb}, nil
+}
+
+func (rb *randBootstrap) Unflatten(handles *elements.Unflattener) (values.Value, error) {
+	return nil, fmterr.Internal(errors.Errorf("%T does not support converting device handles into GX values", rb), "")
+}
+
 func (rb *randBootstrap) initRand(seed *values.HostArray) error {
 	seedValue := types.AtomFromHost[int64](seed)
 	rb.rand = rand.New(rand.NewSource(seedValue))
 	return nil
 }
 
-var uint64Type = ir.ToAtomic(ir.Uint64Kind)
+var uint64Type = ir.TypeFromKind(ir.Uint64Kind)
 
-func (rb *randBootstrap) nextConstant() (state.NumericalElement, error) {
+func (rb *randBootstrap) nextConstant() (elements.NumericalElement, error) {
 	next := rb.rand.Uint64()
-	return state.NewAtomicLiteral[uint64](rb.context.State(), uint64Type, next)
+	expr := &ir.AtomicValueT[uint64]{
+		Src: rb.call.Node().Expr(),
+		Val: next,
+		Typ: uint64Type,
+	}
+	value := values.AtomIntegerValue(expr.Typ, next)
+	return rb.context.Evaluator().ElementFromValue(elements.NewNodeAt[ir.Node](rb.context.File(), expr), value)
 }
 
 func (rb *randBootstrap) State() *state.State {
@@ -64,51 +79,72 @@ func (rb *randBootstrap) State() *state.State {
 }
 
 type randBootstrapArg struct {
-	seedArg *state.ArgGX
-	rb      *randBootstrap
+	seed   elements.ElementWithArrayFromContext
+	rb     *randBootstrap
+	pValue *proxies.Array
 }
 
-func (arg *randBootstrapArg) next() (state.NumericalElement, error) {
-	ctx := arg.rb.context
-	return ctx.State().NewArgElement("randBootstrap.next", arg.seedArg.Field().ToExprAt(), arg)
+func newRandBootstrapArg(ctx interp.Context, rb *randBootstrap, seed elements.ElementWithArrayFromContext) *randBootstrapArg {
+	typ := ir.TypeFromKind(ir.Uint64Kind)
+	shape := &shape.Shape{DType: dtype.Uint64}
+	argFactory := &randBootstrapArg{
+		rb:     rb,
+		seed:   seed,
+		pValue: proxies.NewArray(typ, shape),
+	}
+	ctx.State().RegisterInit(argFactory)
+	return argFactory
 }
 
-func (arg randBootstrapArg) Shape() *shape.Shape {
-	return &shape.Shape{DType: dtype.Uint64}
+func (arg *randBootstrapArg) next() (elements.NumericalElement, error) {
+	return state.NewArrayArgument(arg, arg.rb.call.ToExprAt(), arg.pValue)
 }
 
-func (arg randBootstrapArg) Type() ir.Type {
-	return ir.ScalarTypeK(ir.Uint64Kind)
-}
-
-func (arg randBootstrapArg) Init(ctx state.Context) error {
-	value := arg.seedArg.Value(ctx)
-	array, ok := value.(*values.HostArray)
+func (arg *randBootstrapArg) Init(ctx *elements.CallInputs) error {
+	value, err := arg.seed.ArrayFromContext(ctx)
+	if err != nil {
+		return nil
+	}
+	hostValue, err := value.ToHost(kernels.Allocator())
+	if err != nil {
+		return err
+	}
+	array, ok := hostValue.(*values.HostArray)
 	if !ok {
 		return errors.Errorf("cannot convert GX argument %T to %T: not supported", value, array)
 	}
 	return arg.rb.initRand(array)
 }
 
-func (arg randBootstrapArg) ToDeviceHandle(device platform.Device, ctx state.Context) (platform.DeviceHandle, error) {
-	val := arg.rb.rand.Uint64()
-	handle := kernels.ToAlgebraicAtom(val)
-	return device.Send(handle.Buffer(), handle.Shape())
+func (arg randBootstrapArg) State() *state.State {
+	return arg.rb.State()
 }
 
-func evalNewBootstrapGenerator(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
+func (arg randBootstrapArg) Name() string {
+	return "randBootstrapArg.next()"
+}
+
+func (arg randBootstrapArg) ValueProxy() proxies.Value {
+	return arg.pValue
+}
+
+func (arg randBootstrapArg) ValueFromContext(ctx *elements.CallInputs) (values.Value, error) {
+	val := arg.rb.rand.Uint64()
+	return values.AtomIntegerValue[uint64](arg.ValueProxy().Type(), val), nil
+}
+
+func evalNewBootstrapGenerator(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
 	bootstrap := &randBootstrap{
 		context: ctx,
 		call:    call,
 		errF:    ctx.FileSet(),
 	}
 	switch seedNode := args[0].(type) {
-	case state.ElementWithConstant:
+	case elements.ElementWithConstant:
 		bootstrap.next = bootstrap.nextConstant
 		err = bootstrap.initRand(seedNode.NumericalConstant())
-	case *state.ArgGX:
-		argFactory := randBootstrapArg{rb: bootstrap, seedArg: seedNode}
-		ctx.State().RegisterInit(argFactory)
+	case elements.ElementWithArrayFromContext:
+		argFactory := newRandBootstrapArg(ctx, bootstrap, seedNode)
 		bootstrap.next = argFactory.next
 	default:
 		err = errors.Errorf("cannot process seed node: %T not supported", seedNode)
@@ -116,11 +152,10 @@ func evalNewBootstrapGenerator(ctx interp.Context, call state.CallAt, fn *state.
 	if err != nil {
 		return nil, err
 	}
-	methods := ctx.State().Methods(bootstrap)
-	return methods, nil
+	return elements.NewMethods(bootstrap), nil
 }
 
-func evalBootstrapGeneratorNext(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
+func evalBootstrapGeneratorNext(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
 	bootStrap := fn.Recv().Element.(*randBootstrap)
 	return bootStrap.next()
 }

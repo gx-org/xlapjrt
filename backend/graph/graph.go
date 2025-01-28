@@ -217,31 +217,26 @@ func (g *Graph) NewConstant(buffer platform.HostBuffer) (graph.Node, error) {
 	return g.newNode(op), nil
 }
 
-type argument struct {
-	*Node
-	name  string
-	shape *shape.Shape
-	index int
-}
-
-var _ pjrtNode = (*argument)(nil)
-
 // NewArgument returns a node set by a caller when calling the function.
 func (g *Graph) NewArgument(name string, shape *shape.Shape, index int) (graph.Node, error) {
 	xlaOp, err := xlabuilder.Parameter(g.builder, name, index, pjrtgx.ToShape(shape))
 	if err != nil {
 		return nil, err
 	}
-	return &argument{
-		Node:  g.newNode(xlaOp),
-		name:  name,
-		shape: shape,
-		index: index,
-	}, nil
+	return g.newNode(xlaOp), nil
 }
 
-func (n *argument) Shape() *shape.Shape {
-	return n.shape
+// NewTupleArgument returns a node representing a tuple parameter of a function.
+func (g *Graph) NewTupleArgument(name string, index int, shapes []*shape.Shape) (graph.Tuple, error) {
+	xlaShape := make([]xlabuilder.Shape, 0, len(shapes))
+	for _, shape := range shapes {
+		xlaShape = append(xlaShape, pjrtgx.ToShape(shape))
+	}
+	xlaOp, err := xlabuilder.Parameter(g.builder, name, index, xlabuilder.Shape{TupleShapes: xlaShape})
+	if err != nil {
+		return nil, err
+	}
+	return &tuple{Node: g.newNode(xlaOp)}, nil
 }
 
 // NewUnaryFunc returns a node executing a unary function. f must be an xlabuilder function pointer.
@@ -282,6 +277,8 @@ func (g *Graph) NewUnary(op *ast.UnaryExpr, x graph.Node) (graph.Node, error) {
 	switch op.Op {
 	case token.SUB:
 		xlaOp, err = xlabuilder.Neg(g.xlaHandle(x))
+	case token.NOT:
+		xlaOp, err = xlabuilder.LogicalNot(g.xlaHandle(x))
 	default:
 		return nil, errors.Errorf("operator %s not supported", op.Op)
 	}
@@ -317,6 +314,8 @@ func (g *Graph) NewBinary(op *ast.BinaryExpr, x, y graph.Node) (graph.Node, erro
 		xlaOp, err = xlabuilder.LessOrEqual(g.xlaHandle(x), g.xlaHandle(y))
 	case token.GEQ:
 		xlaOp, err = xlabuilder.GreaterOrEqual(g.xlaHandle(x), g.xlaHandle(y))
+	case token.REM:
+		xlaOp, err = xlabuilder.Rem(g.xlaHandle(x), g.xlaHandle(y))
 	default:
 		return nil, errors.Errorf("operator %s not supported", op.Op)
 	}
@@ -352,8 +351,34 @@ type tuple struct {
 	*Node
 }
 
+// Element returns a Node representing the ith element of the tuple.
+func (n *tuple) Element(i int) (graph.Node, error) {
+	xlaOp, err := xlabuilder.GetTupleElement(n.graph.xlaHandle(n.Node), i)
+	if err != nil {
+		return nil, err
+	}
+	return n.graph.newNode(xlaOp), nil
+}
+
+func (n *tuple) Size() int {
+	// Note: this relies on gopjrt's shape tracking.
+	return n.Node.op.Shape.TupleSize()
+}
+
+func (n *tuple) Unpack() ([]graph.Node, error) {
+	nodes := make([]graph.Node, 0, n.Size())
+	for i := range n.Size() {
+		node, err := n.Element(i)
+		if err != nil {
+			return nil, err
+		}
+		nodes = append(nodes, node)
+	}
+	return nodes, nil
+}
+
 // NewTuple returns a node grouping multiple nodes together.
-func (g *Graph) NewTuple(nodes []graph.Node) (graph.Node, error) {
+func (g *Graph) NewTuple(nodes []graph.Node) (graph.Tuple, error) {
 	inputs, err := g.xlaHandles(nodes)
 	if err != nil {
 		return nil, err
@@ -365,34 +390,17 @@ func (g *Graph) NewTuple(nodes []graph.Node) (graph.Node, error) {
 	return &tuple{g.newNode(xlaOp)}, nil
 }
 
-// ToXLATuple casts a XLA internal to a tuple node.
-func ToXLATuple(n graph.Node, err error) (graph.Node, error) {
-	if err != nil {
-		return nil, err
+// ToXLATuple casts a generic Node to a graph.Tuple node.
+func ToXLATuple(n graph.Node) graph.Tuple {
+	if tpl, ok := n.(*tuple); ok {
+		return tpl
 	}
-	return &tuple{Node: n.(*Node)}, nil
-}
-
-// Element returns a node representing the ith element of the tuple.
-func (n *tuple) Element(i int) (graph.Node, error) {
-	xlaOp, err := xlabuilder.GetTupleElement(n.graph.xlaHandle(n.Node), i)
-	if err != nil {
-		return nil, err
-	}
-	return n.graph.newNode(xlaOp), nil
-}
-
-func toNodes(nodes []graph.Node) []graph.Node {
-	r := make([]graph.Node, len(nodes))
-	for i, nn := range nodes {
-		r[i] = nn
-	}
-	return r
+	return &tuple{Node: n.(*Node)}
 }
 
 // NewConcat concatenates multiple arrays into a single array.
 func (g *Graph) NewConcat(axis int, nodes []graph.Node) (graph.Node, error) {
-	inputs, err := g.xlaHandles(toNodes(nodes))
+	inputs, err := g.xlaHandles(nodes)
 	if err != nil {
 		return nil, err
 	}
@@ -565,18 +573,26 @@ func (g *Graph) NewDotGeneral(x, y graph.Node, batchAxes, reduceAxes [2][]int) (
 }
 
 // NewCall returns a node that invokes a subgraph with the given result node.
-func (g *Graph) NewCall(sg graph.Graph, resultNode graph.Node) (graph.Node, error) {
-	pjrtsg := sg.(*Graph)
-	subcomp, err := pjrtsg.builder.Build(pjrtsg.xlaHandle(resultNode))
+func (g *Graph) NewCall(sg graph.Subgraph, args ...graph.Node) (graph.Node, error) {
+	subcomp, err := g.xlaSubcomputation(sg)
+	if err != nil {
+		return nil, err
+	}
+	argOps, err := g.xlaHandles(args)
 	if err != nil {
 		return nil, err
 	}
 
-	xlaOp, err := xlabuilder.Call(g.builder, subcomp)
+	xlaOp, err := xlabuilder.Call(g.builder, subcomp, argOps...)
 	if err != nil {
 		return nil, err
 	}
-	return g.newNode(xlaOp), nil
+	var result graph.Node = g.newNode(xlaOp)
+	if _, ok := sg.Result.Node.(graph.Tuple); ok {
+		// If the result node was a tuple, the subgraph's return value will also be a tuple.
+		result = ToXLATuple(result)
+	}
+	return result, nil
 }
 
 // NewSubgraph returns a Graph instance that maps to a new subgraph.
@@ -595,4 +611,31 @@ func (g *Graph) NewRngBitGenerator(state graph.Node, shape *shape.Shape) (graph.
 		return nil, nil, err
 	}
 	return g.newNode(newState), g.newNode(values), nil
+}
+
+func (g *Graph) xlaSubcomputation(sg graph.Subgraph) (*xlabuilder.XlaComputation, error) {
+	pjrtsg := sg.Graph.(*Graph)
+	return pjrtsg.builder.Build(pjrtsg.xlaHandle(sg.Result.Node))
+}
+
+// NewWhile returns a while loop node.
+func (g *Graph) NewWhile(cond, body graph.Subgraph, state graph.Node) (graph.Node, error) {
+	condSG, err := g.xlaSubcomputation(cond)
+	if err != nil {
+		return nil, err
+	}
+	bodySG, err := g.xlaSubcomputation(body)
+	if err != nil {
+		return nil, err
+	}
+
+	xlaOp, err := xlabuilder.While(g.xlaHandle(state), condSG, bodySG)
+	if err != nil {
+		return nil, err
+	}
+	var result graph.Node = g.newNode(xlaOp)
+	if _, ok := state.(graph.Tuple); ok {
+		result = ToXLATuple(result)
+	}
+	return result, nil
 }

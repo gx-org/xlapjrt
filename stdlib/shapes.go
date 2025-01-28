@@ -19,12 +19,14 @@ import (
 
 	"github.com/gx-org/backend/graph"
 	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/state"
 )
 
-func evalConcat(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
+func evalConcat(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
 	xs := make([]graph.Node, len(args)-1)
 	xShapes := make([]*shape.Shape, len(args)-1)
 	for i, arg := range args[1:] {
@@ -34,7 +36,7 @@ func evalConcat(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *i
 			return nil, err
 		}
 	}
-	axis, err := state.ConstantScalarFromElement[ir.Int](args[0])
+	axis, err := elements.ConstantScalarFromElement[ir.Int](args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -42,31 +44,35 @@ func evalConcat(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *i
 	if err != nil {
 		return nil, err
 	}
-	return ctx.State().ElementFromNode(call.ToExprAt(), op, &shape.Shape{
-		DType:       xShapes[0].DType,
-		AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
+	return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+		Node: op,
+		Shape: &shape.Shape{
+			DType:       xShapes[0].DType,
+			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
+		},
 	})
 }
 
-func evalLen(ctx interp.Context, call state.CallAt, _ *state.Func, _ *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
-	shape, err := state.ShapeFromElement(args[0])
+func evalLen(ctx interp.Context, call elements.CallAt, _ *elements.Func, _ *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
+	shape, err := elements.ShapeFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
 	length := ir.Int(shape.OuterAxisLength())
-	return state.NewAtomicLiteral(ctx.State(), call.Type(), length)
+	value := values.AtomIntegerValue(call.Node().Type(), length)
+	return ctx.Evaluator().ElementFromValue(elements.NewNodeAt[ir.Node](ctx.File(), call.Node()), value)
 }
 
-func evalSplit(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
+func evalSplit(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
 	node, firstArgShape, err := state.NodeFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
-	axis, err := state.ConstantScalarFromElement[ir.Int](args[0])
+	axis, err := elements.ConstantScalarFromElement[ir.Int](args[0])
 	if err != nil {
 		return nil, err
 	}
-	numSplits, err := state.ConstantScalarFromElement[ir.Int](args[2])
+	numSplits, err := elements.ConstantScalarFromElement[ir.Int](args[2])
 	if err != nil {
 		return nil, err
 	}
@@ -74,14 +80,17 @@ func evalSplit(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir
 	if err != nil {
 		return nil, err
 	}
-	return ctx.State().ElementFromNode(call.ToExprAt(), op, &shape.Shape{
-		DType:       firstArgShape.DType,
-		AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
+	return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+		Node: op,
+		Shape: &shape.Shape{
+			DType:       firstArgShape.DType,
+			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
+		},
 	})
 }
 
-func evalExpand(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
-	targetAxes, err := state.AxesFromElement(args[1])
+func evalExpand(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
+	targetAxes, err := elements.AxesFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
@@ -101,15 +110,18 @@ func evalExpand(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *i
 	if err != nil {
 		return nil, err
 	}
-	return ctx.State().ElementFromNode(call.ToExprAt(), op, targetShape)
+	return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+		Node:  op,
+		Shape: targetShape,
+	})
 }
 
-func evalGather(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
-	inputShape, err := state.ShapeFromElement(args[0])
+func evalGather(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
+	inputShape, err := elements.ShapeFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
-	indicesShape, err := state.ShapeFromElement(args[1])
+	indicesShape, err := elements.ShapeFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
@@ -160,8 +172,11 @@ func evalGather(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *i
 	if err != nil {
 		return nil, err
 	}
-	return ctx.State().ElementFromNode(call.ToExprAt(), op, &shape.Shape{
-		DType:       xShape.DType,
-		AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
+	return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+		Node: op,
+		Shape: &shape.Shape{
+			DType:       xShape.DType,
+			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
+		},
 	})
 }

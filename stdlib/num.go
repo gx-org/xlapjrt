@@ -19,19 +19,21 @@ import (
 	"slices"
 
 	"github.com/gomlx/gopjrt/xlabuilder"
+	"github.com/gx-org/backend/graph"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/state"
 )
 
 func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) interp.FuncBuiltin {
-	return func(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
+	return func(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
 		x, xShape, err := state.NodeFromElement(args[0])
 		if err != nil {
 			return nil, err
 		}
-		axes, err := state.AxesFromElement(args[1])
+		axes, err := elements.AxesFromElement(args[1])
 		if err != nil {
 			return nil, err
 		}
@@ -44,14 +46,17 @@ func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) in
 		if err != nil {
 			return nil, err
 		}
-		return ctx.State().ElementFromNode(call.ToExprAt(), resultNode, &shape.Shape{
-			DType:       xShape.DType,
-			AxisLengths: resultNode.(interface{ PJRTDims() []int }).PJRTDims(),
+		return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+			Node: resultNode,
+			Shape: &shape.Shape{
+				DType:       xShape.DType,
+				AxisLengths: resultNode.(interface{ PJRTDims() []int }).PJRTDims(),
+			},
 		})
 	}
 }
 
-func evalTranspose(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
+func evalTranspose(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
 	argNode, argShape, err := state.NodeFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -73,19 +78,22 @@ func evalTranspose(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc
 		DType:       argShape.DType,
 		AxisLengths: targetLengths,
 	}
-	return ctx.State().ElementFromNode(call.ToExprAt(), op, targetShape)
+	return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+		Node:  op,
+		Shape: targetShape,
+	})
 }
 
-func evalEinsum(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
+func evalEinsum(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) (state.Element, error) {
 	left, leftShape, err := state.NodeFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
-	lhsContractingAxes, err := state.AxesFromElement(args[1])
+	lhsContractingAxes, err := elements.AxesFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
-	lhsBatchAxes, err := state.AxesFromElement(args[2])
+	lhsBatchAxes, err := elements.AxesFromElement(args[2])
 	if err != nil {
 		return nil, err
 	}
@@ -93,11 +101,11 @@ func evalEinsum(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *i
 	if err != nil {
 		return nil, err
 	}
-	rhsContractingAxes, err := state.AxesFromElement(args[4])
+	rhsContractingAxes, err := elements.AxesFromElement(args[4])
 	if err != nil {
 		return nil, err
 	}
-	rhsBatchAxes, err := state.AxesFromElement(args[5])
+	rhsBatchAxes, err := elements.AxesFromElement(args[5])
 	if err != nil {
 		return nil, err
 	}
@@ -108,18 +116,21 @@ func evalEinsum(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *i
 	if err != nil {
 		return nil, fmt.Errorf("\nlhsContractingAxes: %v\nlhsBatchAxes: %v\nrhsContractingAxes: %v\nrhsBatchAxes: %v\nleft: %v\nright: %v", lhsContractingAxes, lhsBatchAxes, rhsContractingAxes, rhsBatchAxes, leftShape, rightShape)
 	}
-	return ctx.State().ElementFromNode(call.ToExprAt(), op, &shape.Shape{
-		DType:       leftShape.DType,
-		AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
+	return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+		Node: op,
+		Shape: &shape.Shape{
+			DType:       leftShape.DType,
+			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
+		},
 	})
 }
 
-func evalIota(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
-	axes, err := state.AxesFromElement(args[0])
+func evalIota(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
+	axes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
-	axisIndex, err := state.ConstantScalarFromElement[ir.Int](args[1])
+	axisIndex, err := elements.ConstantScalarFromElement[ir.Int](args[1])
 	if err != nil {
 		return nil, err
 	}
@@ -131,11 +142,14 @@ func evalIota(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir.
 	if err != nil {
 		return nil, err
 	}
-	return ctx.State().ElementFromNode(call.ToExprAt(), op, targetShape)
+	return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+		Node:  op,
+		Shape: targetShape,
+	})
 }
 
-func evalIotaFull(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
-	axes, err := state.AxesFromElement(args[0])
+func evalIotaFull(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
+	axes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -154,15 +168,18 @@ func evalIotaFull(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc 
 	if err != nil {
 		return nil, err
 	}
-	return ctx.State().ElementFromNode(call.ToExprAt(), op, targetShape)
+	return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+		Node:  op,
+		Shape: targetShape,
+	})
 }
 
-func evalArgmax(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
+func evalArgmax(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
 	argNode, _, err := state.NodeFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
-	axisIndex, err := state.ConstantScalarFromElement[ir.Int](args[1])
+	axisIndex, err := elements.ConstantScalarFromElement[ir.Int](args[1])
 	if err != nil {
 		return nil, err
 	}
@@ -170,8 +187,11 @@ func evalArgmax(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *i
 	if err != nil {
 		return nil, err
 	}
-	return ctx.State().ElementFromNode(call.ToExprAt(), op, &shape.Shape{
-		DType:       ir.DefaultIntKind.DType(),
-		AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
+	return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+		Node: op,
+		Shape: &shape.Shape{
+			DType:       ir.DefaultIntKind.DType(),
+			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
+		},
 	})
 }

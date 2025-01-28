@@ -16,11 +16,13 @@ package stdlib
 
 import (
 	"github.com/gx-org/backend/dtype"
+	"github.com/gx-org/backend/graph"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/state"
-	"github.com/gx-org/xlapjrt/backend/graph"
+	xlagraph "github.com/gx-org/xlapjrt/backend/graph"
 )
 
 var philoxStateShape = &shape.Shape{
@@ -28,10 +30,10 @@ var philoxStateShape = &shape.Shape{
 	AxisLengths: []int{3},
 }
 
-func evalPhiloxUint64(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
-	philox := fn.Recv().Element.(state.FieldSelector)
+func evalPhilox(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element, dtyp dtype.DataType) (output state.Element, err error) {
+	philox := fn.Recv().Element.(elements.FieldSelector)
 	exprAt := call.ToExprAt()
-	field, err := philox.SelectField(exprAt, 0)
+	field, err := philox.SelectField(exprAt, "state")
 	if err != nil {
 		return nil, err
 	}
@@ -39,38 +41,52 @@ func evalPhiloxUint64(ctx interp.Context, call state.CallAt, fn *state.Func, irF
 	if err != nil {
 		return nil, err
 	}
-	dimensions, err := state.AxesFromElement(args[0])
+	dimensions, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
 	g := ctx.State()
-	bckGraph := g.BackendGraph().(*graph.Graph)
-	targetShape := &shape.Shape{DType: dtype.Uint64, AxisLengths: dimensions}
+	bckGraph := g.BackendGraph().(*xlagraph.Graph)
+	targetShape := &shape.Shape{DType: dtyp, AxisLengths: dimensions}
 	newState, values, err := bckGraph.NewRngBitGenerator(stateNode, targetShape)
 	if err != nil {
 		return nil, err
 	}
 
-	philoxState := call.ExprT().ExprFromResult(0)
-	philoxStateAt := state.NewExprAt[ir.Expr](call.File(), philoxState)
+	philoxState := call.Node().ExprFromResult(0)
+	philoxStateAt := elements.NewNodeAt[ir.Expr](call.File(), philoxState)
 	philoxStruct := ir.Underlying(philoxState.Type()).(*ir.StructType)
 	stateArray := philoxStruct.Fields.Fields()[0]
-	stateArrayAt := state.NewExprAt[ir.Expr](call.File(), stateArray)
-	philoxStateElement, err := ctx.State().ElementFromNode(stateArrayAt, newState, philoxStateShape)
+	stateArrayAt := elements.NewNodeAt[ir.Expr](call.File(), stateArray)
+	philoxStateElement, err := ctx.State().ElementFromNode(stateArrayAt, &graph.OutputNode{
+		Node:  newState,
+		Shape: philoxStateShape,
+	})
 	if err != nil {
 		return nil, err
 	}
-	randValueAt := state.NewExprAt[ir.Expr](call.File(), call.ExprT().ExprFromResult(1))
-	valuesElement, err := ctx.State().ElementFromNode(randValueAt, values, targetShape)
+	randValueAt := elements.NewNodeAt[ir.Expr](call.File(), call.Node().ExprFromResult(1))
+	valuesElement, err := ctx.State().ElementFromNode(randValueAt, &graph.OutputNode{
+		Node:  values,
+		Shape: targetShape,
+	})
 	if err != nil {
 		return nil, err
 	}
-	return g.Tuple(call.File(), call.ExprT(), []state.Element{
-		g.Methods(ctx.State().Struct(
+	return elements.NewTuple(call.File(), call.Node(), []elements.Element{
+		elements.NewMethods(elements.NewStruct(
 			philoxStruct,
 			philoxStateAt,
-			[]state.Element{philoxStateElement},
+			map[string]state.Element{"state": philoxStateElement},
 		)),
 		valuesElement,
 	}), nil
+}
+
+func evalPhiloxUint32(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
+	return evalPhilox(ctx, call, fn, irFunc, args, dtype.Uint32)
+}
+
+func evalPhiloxUint64(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
+	return evalPhilox(ctx, call, fn, irFunc, args, dtype.Uint64)
 }

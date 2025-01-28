@@ -81,6 +81,10 @@ func (r *nodeRunner) Run(args []platform.Handle) (out, traced []platform.DeviceH
 	deviceBuffers := make([]*pjrt.Buffer, len(args))
 	for i, arg := range args {
 		deviceBuffers[i] = arg.(*pjrtplatform.Handle).OnDeviceBuffer()
+		// Check that the buffer is valid...
+		if _, err := deviceBuffers[i].DType(); err != nil {
+			return nil, nil, errors.Errorf("argument %d:%T is an invalid pjrt buffer", i, arg)
+		}
 	}
 	results, err := r.graph.Executable().Execute(deviceBuffers...).Done()
 	if err != nil {

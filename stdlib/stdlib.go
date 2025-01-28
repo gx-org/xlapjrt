@@ -19,8 +19,10 @@ import (
 	"fmt"
 
 	"github.com/gomlx/gopjrt/xlabuilder"
+	"github.com/gx-org/backend/graph"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/state"
 	"github.com/gx-org/gx/stdlib/impl"
@@ -29,6 +31,9 @@ import (
 
 // Stdlib is the PJRT implementation of the standard library.
 var Stdlib = &impl.Stdlib{
+	Control: impl.Control{
+		While: evalWhile,
+	},
 	Math: impl.Math{
 		Pow:  xlaBinaryFunc(xlabuilder.Pow, firstArgument),
 		Exp:  xlaUnaryFunc(xlabuilder.Exp),
@@ -39,6 +44,7 @@ var Stdlib = &impl.Stdlib{
 		Sin:  xlaUnaryFunc(xlabuilder.Sin),
 		Sqrt: xlaUnaryFunc(xlabuilder.Sqrt),
 		Tanh: xlaUnaryFunc(xlabuilder.Tanh),
+		Ceil: xlaUnaryFunc(xlabuilder.Ceil),
 	},
 	Num: impl.Num{
 		Iota:      evalIota,
@@ -53,6 +59,7 @@ var Stdlib = &impl.Stdlib{
 	Rand: impl.Rand{
 		BootstrapGeneratorNew:  evalNewBootstrapGenerator,
 		BootstrapGeneratorNext: evalBootstrapGeneratorNext,
+		PhiloxUint32:           evalPhiloxUint32,
 		PhiloxUint64:           evalPhiloxUint64,
 	},
 	Shapes: impl.Shapes{
@@ -65,7 +72,7 @@ var Stdlib = &impl.Stdlib{
 }
 
 func xlaUnaryFunc(f func(*xlabuilder.Op) (*xlabuilder.Op, error)) interp.FuncBuiltin {
-	return func(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
+	return func(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("unary function expects 1 argument, got %d", len(args))
 		}
@@ -77,7 +84,10 @@ func xlaUnaryFunc(f func(*xlabuilder.Op) (*xlabuilder.Op, error)) interp.FuncBui
 		if err != nil {
 			return nil, err
 		}
-		return ctx.State().ElementFromNode(call.ToExprAt(), node, xShape)
+		return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+			Node:  node,
+			Shape: xShape,
+		})
 	}
 }
 
@@ -111,7 +121,7 @@ func matmulShape(x, y *shape.Shape) *shape.Shape {
 }
 
 func xlaBinaryFunc(f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, error), shapeF func(x, y *shape.Shape) *shape.Shape) interp.FuncBuiltin {
-	return func(ctx interp.Context, call state.CallAt, fn *state.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
+	return func(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
 		if len(args) != 2 {
 			return nil, fmt.Errorf("binary function expects 2 arguments, got %d", len(args))
 		}
@@ -128,7 +138,10 @@ func xlaBinaryFunc(f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, e
 			return nil, err
 		}
 		outShape := shapeF(xShape, yShape)
-		return ctx.State().ElementFromNode(call.ToExprAt(), node, outShape)
+		return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+			Node:  node,
+			Shape: outShape,
+		})
 	}
 }
 
