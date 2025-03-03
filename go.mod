@@ -17,7 +17,3 @@ require (
 	google.golang.org/protobuf v1.36.5 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 )
-
-replace github.com/gx-org/backend => ../backend
-
-replace github.com/gx-org/gx => ../gx
