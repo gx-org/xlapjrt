@@ -22,16 +22,17 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/interp/state"
+	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/grapheval"
 )
 
-func evalConcat(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
+func evalConcat(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
 	xs := make([]graph.Node, len(args)-1)
 	xShapes := make([]*shape.Shape, len(args)-1)
+	ao := ctx.Evaluation().Evaluator().ArrayOps()
 	for i, arg := range args[1:] {
 		var err error
-		xs[i], xShapes[i], err = state.NodeFromElement(arg)
+		xs[i], xShapes[i], err = grapheval.NodeFromElement(ao, arg)
 		if err != nil {
 			return nil, err
 		}
@@ -40,11 +41,11 @@ func evalConcat(ctx interp.Context, call elements.CallAt, fn *elements.Func, irF
 	if err != nil {
 		return nil, err
 	}
-	op, err := pjrtGraph(ctx).NewConcat(int(axis), xs)
+	op, err := pjrtGraph(ctx).Concat(int(axis), xs)
 	if err != nil {
 		return nil, err
 	}
-	return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+	return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       xShapes[0].DType,
@@ -53,18 +54,26 @@ func evalConcat(ctx interp.Context, call elements.CallAt, fn *elements.Func, irF
 	})
 }
 
-func evalLen(ctx interp.Context, call elements.CallAt, _ *elements.Func, _ *ir.FuncBuiltin, args []state.Element) (output state.Element, err error) {
+func evalLen(ctx evaluator.Context, call elements.CallAt, _ elements.Func, _ *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
 	shape, err := elements.ShapeFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
 	length := ir.Int(shape.OuterAxisLength())
-	value := values.AtomIntegerValue(call.Node().Type(), length)
-	return ctx.Evaluator().ElementFromValue(elements.NewNodeAt[ir.Node](ctx.File(), call.Node()), value)
+	value, err := values.AtomIntegerValue(call.Node().Type(), length)
+	if err != nil {
+		return nil, err
+	}
+	out, err := ctx.Evaluation().Evaluator().ElementFromAtom(elements.NewExprAt(ctx.File(), call.Node()), value)
+	if err != nil {
+		return nil, err
+	}
+	return []elements.Element{out}, nil
 }
 
-func evalSplit(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
-	node, firstArgShape, err := state.NodeFromElement(args[1])
+func evalSplit(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
+	ao := ctx.Evaluation().Evaluator().ArrayOps()
+	node, firstArgShape, err := grapheval.NodeFromElement(ao, args[1])
 	if err != nil {
 		return nil, err
 	}
@@ -76,11 +85,11 @@ func evalSplit(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFu
 	if err != nil {
 		return nil, err
 	}
-	op, err := pjrtGraph(ctx).NewSplit(node, int(axis), int(numSplits))
+	op, err := pjrtGraph(ctx).Split(node, int(axis), int(numSplits))
 	if err != nil {
 		return nil, err
 	}
-	return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+	return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       firstArgShape.DType,
@@ -89,34 +98,7 @@ func evalSplit(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFu
 	})
 }
 
-func evalExpand(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
-	targetAxes, err := elements.AxesFromElement(args[1])
-	if err != nil {
-		return nil, err
-	}
-	expandAxes := make([]int, len(targetAxes))
-	for i := range targetAxes {
-		expandAxes[i] = i
-	}
-	x, xShape, err := state.NodeFromElement(args[0])
-	if err != nil {
-		return nil, err
-	}
-	targetShape := &shape.Shape{
-		DType:       xShape.DType,
-		AxisLengths: targetAxes,
-	}
-	op, err := pjrtGraph(ctx).NewBroadcastInDim(x, targetShape, expandAxes)
-	if err != nil {
-		return nil, err
-	}
-	return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
-		Node:  op,
-		Shape: targetShape,
-	})
-}
-
-func evalGather(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
+func evalGather(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
 	inputShape, err := elements.ShapeFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -160,19 +142,20 @@ func evalGather(ctx interp.Context, call elements.CallAt, fn *elements.Func, irF
 		offsetDims[ii] = outputSubRank + ii
 	}
 
-	x, xShape, err := state.NodeFromElement(args[0])
+	ao := ctx.Evaluation().Evaluator().ArrayOps()
+	x, xShape, err := grapheval.NodeFromElement(ao, args[0])
 	if err != nil {
 		return nil, err
 	}
-	indicesNode, _, err := state.NodeFromElement(args[1])
+	indicesNode, _, err := grapheval.NodeFromElement(ao, args[1])
 	if err != nil {
 		return nil, err
 	}
-	op, err := pjrtGraph(ctx).NewGather(x, indicesNode, indexVectorDim, offsetDims, collapsedSliceDims, startIndexMap, sliceSizes, false)
+	op, err := pjrtGraph(ctx).Gather(x, indicesNode, indexVectorDim, offsetDims, collapsedSliceDims, startIndexMap, sliceSizes, false)
 	if err != nil {
 		return nil, err
 	}
-	return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+	return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       xShape.DType,
