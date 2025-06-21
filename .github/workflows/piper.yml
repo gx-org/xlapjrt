@@ -80,6 +80,7 @@ jobs:
 
     - name: Build
       run: |
+        echo "CGO_CFLAGS: $CGO_CFLAGS"
         go build -v ./...
 
     - name: Test the piper branch
