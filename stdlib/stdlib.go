@@ -23,8 +23,9 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
+	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
-	"github.com/gx-org/gx/interp/state"
 	"github.com/gx-org/gx/stdlib/impl"
 	pjrtgraph "github.com/gx-org/xlapjrt/backend/graph"
 )
@@ -34,21 +35,29 @@ var Stdlib = &impl.Stdlib{
 	Control: impl.Control{
 		While: evalWhile,
 	},
+	Dtype: impl.Dtype{
+		Reinterpret: evalReinterpret,
+	},
 	Math: impl.Math{
-		Pow:  xlaBinaryFunc(xlabuilder.Pow, firstArgument),
-		Exp:  xlaUnaryFunc(xlabuilder.Exp),
-		Log:  xlaUnaryFunc(xlabuilder.Log),
-		Min:  xlaBinaryFunc(xlabuilder.Min, minmaxDType),
-		Max:  xlaBinaryFunc(xlabuilder.Max, minmaxDType),
-		Cos:  xlaUnaryFunc(xlabuilder.Cos),
-		Sin:  xlaUnaryFunc(xlabuilder.Sin),
-		Sqrt: xlaUnaryFunc(xlabuilder.Sqrt),
-		Tanh: xlaUnaryFunc(xlabuilder.Tanh),
-		Ceil: xlaUnaryFunc(xlabuilder.Ceil),
+		Abs:      xlaUnaryFunc(xlabuilder.Abs),
+		Ceil:     xlaUnaryFunc(xlabuilder.Ceil),
+		Erf:      xlaUnaryFunc(xlabuilder.Erf),
+		Expm1:    xlaUnaryFunc(xlabuilder.Expm1),
+		Exp:      xlaUnaryFunc(xlabuilder.Exp),
+		Floor:    xlaUnaryFunc(xlabuilder.Floor),
+		Log1p:    xlaUnaryFunc(xlabuilder.Log1p),
+		Logistic: xlaUnaryFunc(xlabuilder.Logistic),
+		Log:      xlaUnaryFunc(xlabuilder.Log),
+		Max:      xlaBinaryFunc(xlabuilder.Max, minmaxDType),
+		Min:      xlaBinaryFunc(xlabuilder.Min, minmaxDType),
+		Pow:      xlaBinaryFunc(xlabuilder.Pow, firstArgument),
+		Round:    xlaUnaryFunc(xlabuilder.Round),
+		Rsqrt:    xlaUnaryFunc(xlabuilder.Rsqrt),
+		Sign:     xlaUnaryFunc(xlabuilder.Sign),
+		Sqrt:     xlaUnaryFunc(xlabuilder.Sqrt),
 	},
 	Num: impl.Num{
 		Iota:      evalIota,
-		IotaFull:  evalIotaFull,
 		Transpose: evalTranspose,
 		Einsum:    evalEinsum,
 		MatMul:    xlaBinaryFunc(xlabuilder.Dot, matmulShape),
@@ -57,13 +66,10 @@ var Stdlib = &impl.Stdlib{
 		Argmax:    evalArgmax,
 	},
 	Rand: impl.Rand{
-		BootstrapGeneratorNew:  evalNewBootstrapGenerator,
-		BootstrapGeneratorNext: evalBootstrapGeneratorNext,
-		PhiloxUint32:           evalPhiloxUint32,
-		PhiloxUint64:           evalPhiloxUint64,
+		PhiloxUint32: evalPhiloxUint32,
+		PhiloxUint64: evalPhiloxUint64,
 	},
 	Shapes: impl.Shapes{
-		Expand: evalExpand,
 		Concat: evalConcat,
 		Len:    evalLen,
 		Split:  evalSplit,
@@ -72,19 +78,20 @@ var Stdlib = &impl.Stdlib{
 }
 
 func xlaUnaryFunc(f func(*xlabuilder.Op) (*xlabuilder.Op, error)) interp.FuncBuiltin {
-	return func(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
+	return func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("unary function expects 1 argument, got %d", len(args))
 		}
-		x, xShape, err := state.NodeFromElement(args[0])
+		ao := ctx.Evaluation().Evaluator().ArrayOps()
+		x, xShape, err := grapheval.NodeFromElement(ao, args[0])
 		if err != nil {
 			return nil, err
 		}
-		node, err := pjrtGraph(ctx).NewUnaryFunc(x, f)
+		node, err := pjrtGraph(ctx).UnaryFunc(x, f)
 		if err != nil {
 			return nil, err
 		}
-		return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+		return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
 			Node:  node,
 			Shape: xShape,
 		})
@@ -107,7 +114,7 @@ func minmaxDType(x, y *shape.Shape) *shape.Shape {
 }
 
 func matmulShape(x, y *shape.Shape) *shape.Shape {
-	lengths := []int{}
+	var lengths []int
 	if len(x.AxisLengths) > 0 {
 		lengths = append(lengths, x.AxisLengths[:len(x.AxisLengths)-1]...)
 	}
@@ -121,30 +128,31 @@ func matmulShape(x, y *shape.Shape) *shape.Shape {
 }
 
 func xlaBinaryFunc(f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, error), shapeF func(x, y *shape.Shape) *shape.Shape) interp.FuncBuiltin {
-	return func(ctx interp.Context, call elements.CallAt, fn *elements.Func, irFunc *ir.FuncBuiltin, args []state.Element) (state.Element, error) {
+	return func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
 		if len(args) != 2 {
 			return nil, fmt.Errorf("binary function expects 2 arguments, got %d", len(args))
 		}
-		x, xShape, err := state.NodeFromElement(args[0])
+		ao := ctx.Evaluation().Evaluator().ArrayOps()
+		x, xShape, err := grapheval.NodeFromElement(ao, args[0])
 		if err != nil {
 			return nil, err
 		}
-		y, yShape, err := state.NodeFromElement(args[1])
+		y, yShape, err := grapheval.NodeFromElement(ao, args[1])
 		if err != nil {
 			return nil, err
 		}
-		node, err := pjrtGraph(ctx).NewBinaryFunc(x, y, f)
+		node, err := pjrtGraph(ctx).BinaryFunc(x, y, f)
 		if err != nil {
 			return nil, err
 		}
 		outShape := shapeF(xShape, yShape)
-		return ctx.State().ElementFromNode(call.ToExprAt(), &graph.OutputNode{
+		return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
 			Node:  node,
 			Shape: outShape,
 		})
 	}
 }
 
-func pjrtGraph(ctx interp.Context) *pjrtgraph.Graph {
-	return ctx.State().BackendGraph().(*pjrtgraph.Graph)
+func pjrtGraph(ctx evaluator.Context) *pjrtgraph.Graph {
+	return ctx.Evaluation().Evaluator().ArrayOps().Graph().(*pjrtgraph.Graph)
 }

@@ -33,6 +33,8 @@ func ToGXDType(k dtypes.DType) dtype.DataType {
 	switch k {
 	case dtypes.Bool:
 		return dtype.Bool
+	case dtypes.BFloat16:
+		return dtype.Bfloat16
 	case dtypes.Float32:
 		return dtype.Float32
 	case dtypes.Float64:
@@ -54,6 +56,8 @@ func ToDType(k dtype.DataType) dtypes.DType {
 	switch k {
 	case dtype.Bool:
 		return dtypes.Bool
+	case dtype.Bfloat16:
+		return dtypes.BFloat16
 	case dtype.Float32:
 		return dtypes.Float32
 	case dtype.Float64:

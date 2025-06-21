@@ -15,6 +15,8 @@
 package platform
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gomlx/gopjrt/xlabuilder"
@@ -87,6 +89,11 @@ func (h *Handle) ToHost(buf platform.HostBuffer) error {
 // Device on which the array is located.
 func (h *Handle) Device() platform.Device {
 	return h.device
+}
+
+// String representation of the handle.
+func (h *Handle) String() string {
+	return fmt.Sprintf("PJRT %T: %s", h, h.shape.String())
 }
 
 // ToDevice sends a generic handle to a device.
