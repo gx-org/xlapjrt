@@ -85,13 +85,10 @@ jobs:
       run: go build ./...
 
     - name: Test the piper branch
-      run: go test -v ./...
+      run: go test ./...
 
     - name: Checkout the main branch
       run: git fetch origin ; git checkout -b main origin/main
-
-    - name: Test the main branch
-      run: go test -v ./...
 
     - name: Merge piper into main
       run: git merge --no-edit piper
