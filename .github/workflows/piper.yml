@@ -48,6 +48,11 @@ jobs:
     - name: Move to the latest version
       run: go get -u 
 
+    -name: Checkout GX to access cgx header files.
+      run: |
+        cd ..
+        git clone https://github.com/gx-org/gx.git
+
     - name: Tidy (best effort)
       run: go mod tidy || true
 
