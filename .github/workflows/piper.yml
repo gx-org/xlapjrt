@@ -23,12 +23,12 @@ on:
 env:
   GOPJRT_NOSUDO: true
   GOPJRT_INSTALL_DIR: ${{ github.workspace }}/../gopjrtbin
-  CGO_CFLAGS: -I${{ github.workspace }}/.. -I ${{ GOPJRT_INSTALL_DIR }}/include
-  CGO_CPPFLAGS: -I${{ github.workspace }}/.. -I ${{ GOPJRT_INSTALL_DIR }}/include
-  CGO_CXXFLAGS: -I${{ github.workspace }}/.. -I ${{ GOPJRT_INSTALL_DIR }}/include
-  CGO_LDFLAGS: -labsl_status -labsl_statusor -L ${{ GOPJRT_INSTALL_DIR }}/lib -lgomlx_xlabuilder
-  PJRT_PLUGIN_LIBRARY_PATH: ${{ GOPJRT_INSTALL_DIR }}/lib/gomlx/pjrt
-  LD_LIBRARY_PATH: ${{ GOPJRT_INSTALL_DIR }}/lib 
+  CGO_CFLAGS: -I${{ github.workspace }}/.. -I $GOPJRT_INSTALL_DIR/include
+  CGO_CPPFLAGS: -I${{ github.workspace }}/.. -I $GOPJRT_INSTALL_DIR/include
+  CGO_CXXFLAGS: -I${{ github.workspace }}/.. -I $GOPJRT_INSTALL_DIR/include
+  CGO_LDFLAGS: -labsl_status -labsl_statusor -L $GOPJRT_INSTALL_DIR/lib -lgomlx_xlabuilder
+  PJRT_PLUGIN_LIBRARY_PATH: $GOPJRT_INSTALL_DIR/lib/gomlx/pjrt
+  LD_LIBRARY_PATH: $GOPJRT_INSTALL_DIR/lib 
 
 jobs:
 
