@@ -57,6 +57,9 @@ jobs:
         cd ..
         git clone https://github.com/gx-org/gx.git
 
+    - name: Install C++ dependencies
+      run: sudo apt install -y libabsl-dev
+
     - name: Install gomlx
       run: curl -sSf https://raw.githubusercontent.com/gomlx/gopjrt/main/cmd/install_linux_amd64.sh | bash
 
@@ -79,9 +82,7 @@ jobs:
         fi
 
     - name: Build
-      run: |
-        echo "CGO_CFLAGS: $CGO_CFLAGS"
-        go build -v ./...
+      run: go build ./...
 
     - name: Test the piper branch
       run: go test -v ./...
