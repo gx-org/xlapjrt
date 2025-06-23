@@ -19,7 +19,7 @@ package testing
 import (
 	"github.com/gx-org/xlapjrt/plugin"
 	"github.com/gx-org/gx/api"
-	"github.com/gx-org/gx/golang/binder/cgx"
+	"github.com/gx-org/gx/cgx/handle"
 	gxtesting "github.com/gx-org/gx/tests/testing"
 	pjrtstdlib "github.com/gx-org/xlapjrt/stdlib"
 )
@@ -33,10 +33,10 @@ func cgx_testing_runtime() C.struct_cgx_runtime_new_result {
 	rtm, err := plugin.NewWithBuilder("cpu", bld)
 	if err != nil {
 		return C.struct_cgx_runtime_new_result{
-			error: (C.cgx_error)(cgx.Wrap[error](err)),
+			error: (C.cgx_error)(handle.Wrap[error](err)),
 		}
 	}
 	return C.struct_cgx_runtime_new_result{
-		runtime: C.cgx_runtime(cgx.Wrap[*api.Runtime](rtm)),
+		runtime: C.cgx_runtime(handle.Wrap[*api.Runtime](rtm)),
 	}
 }

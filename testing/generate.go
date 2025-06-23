@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package testing provide a cgx runtime for GX testing.
-// The runtime includes GX test files statically linked in the binary.
 package testing
 
 //go:generate bash -c "go tool cgo -debug-gcc -exportheader testing.cgo.h -- `echo $CGO_CFLAGS` testing.go"
