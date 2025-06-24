@@ -5,7 +5,7 @@ go 1.24.2
 require (
 	github.com/gomlx/gopjrt v0.7.3
 	github.com/gx-org/backend v0.1.0
-	github.com/gx-org/gx v0.0.0-20250621125734-2ce391548a08
+	github.com/gx-org/gx v0.0.0-20250623183232-9269f4d2a47e
 	github.com/pkg/errors v0.9.1
 )
 
