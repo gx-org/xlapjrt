@@ -19,7 +19,7 @@ import (
 	"slices"
 
 	"github.com/gomlx/gopjrt/xlabuilder"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
@@ -47,7 +47,7 @@ func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) in
 		if err != nil {
 			return nil, err
 		}
-		return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+		return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
 			Node: resultNode,
 			Shape: &shape.Shape{
 				DType:       xShape.DType,
@@ -79,7 +79,7 @@ func evalTranspose(ctx evaluator.Context, call elements.CallAt, fn elements.Func
 		DType:       argShape.DType,
 		AxisLengths: targetLengths,
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
 	})
@@ -118,7 +118,7 @@ func evalEinsum(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 	if err != nil {
 		return nil, fmt.Errorf("\nlhsContractingAxes: %v\nlhsBatchAxes: %v\nrhsContractingAxes: %v\nrhsBatchAxes: %v\nleft: %v\nright: %v", lhsContractingAxes, lhsBatchAxes, rhsContractingAxes, rhsBatchAxes, leftShape, rightShape)
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       leftShape.DType,
@@ -144,7 +144,7 @@ func evalIota(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irF
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
 	})
@@ -163,7 +163,7 @@ func evalArgmax(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       ir.DefaultIntKind.DType(),

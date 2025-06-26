@@ -16,25 +16,25 @@ package graph
 
 import (
 	"github.com/gomlx/gopjrt/xlabuilder"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 )
 
 // Math returns the builder to build operations from the math package.
-func (g *Graph) Math() graph.MathBuilder {
+func (g *Graph) Math() ops.MathBuilder {
 	return g
 }
 
 // Cos returns a node computing the cosine.
-func (g *Graph) Cos(x graph.Node) (graph.Node, error) {
+func (g *Graph) Cos(x ops.Node) (ops.Node, error) {
 	return g.UnaryFunc(x, xlabuilder.Cos)
 }
 
 // Sin returns a node computing the sine.
-func (g *Graph) Sin(x graph.Node) (graph.Node, error) {
+func (g *Graph) Sin(x ops.Node) (ops.Node, error) {
 	return g.UnaryFunc(x, xlabuilder.Sin)
 }
 
 // Tanh returns a node computing the hyperbolic tangent.
-func (g *Graph) Tanh(x graph.Node) (graph.Node, error) {
+func (g *Graph) Tanh(x ops.Node) (ops.Node, error) {
 	return g.UnaryFunc(x, xlabuilder.Tanh)
 }

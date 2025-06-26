@@ -16,18 +16,18 @@ package graph
 
 import (
 	"github.com/gomlx/gopjrt/xlabuilder"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
 // Num returns the builder to build operations from the num package.
-func (g *Graph) Num() graph.NumBuilder {
+func (g *Graph) Num() ops.NumBuilder {
 	return g
 }
 
 // Iota creates a constant of the given shape with increasing numbers (starting from 0) on the given axis.
-func (g *Graph) Iota(shape *shape.Shape, iotaAxis int) (graph.Node, error) {
+func (g *Graph) Iota(shape *shape.Shape, iotaAxis int) (ops.Node, error) {
 	xlaOp, err := xlabuilder.Iota(g.builder, pjrtgx.ToShape(shape), iotaAxis)
 	if err != nil {
 		return nil, err

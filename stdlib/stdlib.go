@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/gomlx/gopjrt/xlabuilder"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
@@ -91,7 +91,7 @@ func xlaUnaryFunc(f func(*xlabuilder.Op) (*xlabuilder.Op, error)) interp.FuncBui
 		if err != nil {
 			return nil, err
 		}
-		return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+		return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
 			Node:  node,
 			Shape: xShape,
 		})
@@ -146,7 +146,7 @@ func xlaBinaryFunc(f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, e
 			return nil, err
 		}
 		outShape := shapeF(xShape, yShape)
-		return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+		return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
 			Node:  node,
 			Shape: outShape,
 		})

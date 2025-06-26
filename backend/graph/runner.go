@@ -17,7 +17,7 @@ package graph
 import (
 	"github.com/pkg/errors"
 	"github.com/gomlx/gopjrt/pjrt"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	pjrtplatform "github.com/gx-org/xlapjrt/backend/platform"
@@ -74,7 +74,7 @@ func toHandles(dev *pjrtplatform.Device, buffers []*pjrt.Buffer, shapes []*shape
 }
 
 // newNodeRunner returns a new node runner given a function and a graph.
-func (graph *Graph) newNodeRunner(dev *pjrtplatform.Device) graph.Runner {
+func (graph *Graph) newNodeRunner(dev *pjrtplatform.Device) ops.Runner {
 	return &nodeRunner{device: dev, graph: graph}
 }
 func (r *nodeRunner) Run(args []platform.Handle) (out, traced []platform.DeviceHandle, err error) {

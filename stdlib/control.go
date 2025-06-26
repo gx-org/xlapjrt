@@ -17,7 +17,7 @@ package stdlib
 import (
 	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
@@ -26,7 +26,7 @@ import (
 	pjrtgraph "github.com/gx-org/xlapjrt/backend/graph"
 )
 
-func toNodes(ao elements.ArrayOps, elts ...elements.Element) ([]graph.Node, []*shape.Shape, error) {
+func toNodes(ao elements.ArrayOps, elts ...elements.Element) ([]ops.Node, []*shape.Shape, error) {
 	elts, err := elements.Flatten(elts...)
 	if err != nil {
 		return nil, nil, err
@@ -35,7 +35,7 @@ func toNodes(ao elements.ArrayOps, elts ...elements.Element) ([]graph.Node, []*s
 	if err != nil {
 		return nil, nil, err
 	}
-	result := make([]graph.Node, len(outputs))
+	result := make([]ops.Node, len(outputs))
 	shapes := make([]*shape.Shape, len(outputs))
 	for i, output := range outputs {
 		result[i] = output.Node
@@ -44,7 +44,7 @@ func toNodes(ao elements.ArrayOps, elts ...elements.Element) ([]graph.Node, []*s
 	return result, shapes, nil
 }
 
-func toStruct(ctx evaluator.Context, exprAt elements.ExprAt, tpl graph.Tuple, shapes []*shape.Shape, structTyp *ir.StructType) (*elements.Struct, error) {
+func toStruct(ctx evaluator.Context, exprAt elements.ExprAt, tpl ops.Tuple, shapes []*shape.Shape, structTyp *ir.StructType) (*elements.Struct, error) {
 	// Construct dummy expressions for all the fields of the structure to keep track of the value types.
 	fieldExprs := make([]ir.AssignableExpr, structTyp.NumFields())
 	for i, field := range structTyp.Fields.Fields() {
@@ -60,27 +60,27 @@ func toStruct(ctx evaluator.Context, exprAt elements.ExprAt, tpl graph.Tuple, sh
 	return elements.NewStructFromElements(structTyp, exprAt.ToValueAt(), els), nil
 }
 
-func getOutputNode(ao elements.ArrayOps, elts []elements.Element) (graph.OutputNode, error) {
+func getOutputNode(ao elements.ArrayOps, elts []elements.Element) (ops.OutputNode, error) {
 	if len(elts) != 1 {
-		return graph.OutputNode{}, errors.Errorf("cannot get the output node of %d element(s)", len(elts))
+		return ops.OutputNode{}, errors.Errorf("cannot get the output node of %d element(s)", len(elts))
 	}
 	node, shape, err := grapheval.NodeFromElement(ao, elts[0])
-	return graph.OutputNode{Node: node, Shape: shape}, err
+	return ops.OutputNode{Node: node, Shape: shape}, err
 }
 
-func packXLATuple(ao elements.ArrayOps, elts []elements.Element) (graph.OutputNode, error) {
+func packXLATuple(ao elements.ArrayOps, elts []elements.Element) (ops.OutputNode, error) {
 	outputNodes, _, err := toNodes(ao, elts...)
 	if err != nil {
-		return graph.OutputNode{}, err
+		return ops.OutputNode{}, err
 	}
 	tupleNode, err := ao.Graph().Core().Tuple(outputNodes)
 	if err != nil {
-		return graph.OutputNode{}, err
+		return ops.OutputNode{}, err
 	}
-	return graph.OutputNode{Node: tupleNode, Shape: &shape.Shape{DType: dtype.Invalid}}, nil
+	return ops.OutputNode{Node: tupleNode, Shape: &shape.Shape{DType: dtype.Invalid}}, nil
 }
 
-func buildSubgraph(ctx evaluator.Context, call elements.CallAt, fn ir.Func, tupleShapes []*shape.Shape, structTyp *ir.StructType, resultHandler func(elements.ArrayOps, []elements.Element) (graph.OutputNode, error)) (*graph.Subgraph, error) {
+func buildSubgraph(ctx evaluator.Context, call elements.CallAt, fn ir.Func, tupleShapes []*shape.Shape, structTyp *ir.StructType, resultHandler func(elements.ArrayOps, []elements.Element) (ops.OutputNode, error)) (*ops.Subgraph, error) {
 	g := pjrtGraph(ctx)
 	subgraph, err := g.Core().Subgraph(fn.Name())
 	if err != nil {
@@ -106,7 +106,7 @@ func buildSubgraph(ctx evaluator.Context, call elements.CallAt, fn ir.Func, tupl
 	if err != nil {
 		return nil, err
 	}
-	return &graph.Subgraph{Graph: subgraph, Result: output}, nil
+	return &ops.Subgraph{Graph: subgraph, Result: output}, nil
 }
 
 func evalWhile(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
@@ -137,7 +137,7 @@ func evalWhile(ctx evaluator.Context, call elements.CallAt, fn elements.Func, ir
 	if err != nil {
 		return nil, err
 	}
-	out, err := toStruct(ctx, call.ToExprAt(), fnState.(graph.Tuple), stateShapes, stateStruct.StructType())
+	out, err := toStruct(ctx, call.ToExprAt(), fnState.(ops.Tuple), stateShapes, stateStruct.StructType())
 	if err != nil {
 		return nil, err
 	}

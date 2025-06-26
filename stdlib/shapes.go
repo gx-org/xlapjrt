@@ -17,7 +17,7 @@ package stdlib
 import (
 	"fmt"
 
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
@@ -27,7 +27,7 @@ import (
 )
 
 func evalConcat(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
-	xs := make([]graph.Node, len(args)-1)
+	xs := make([]ops.Node, len(args)-1)
 	xShapes := make([]*shape.Shape, len(args)-1)
 	ao := ctx.Evaluation().Evaluator().ArrayOps()
 	for i, arg := range args[1:] {
@@ -45,7 +45,7 @@ func evalConcat(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       xShapes[0].DType,
@@ -89,7 +89,7 @@ func evalSplit(ctx evaluator.Context, call elements.CallAt, fn elements.Func, ir
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       firstArgShape.DType,
@@ -155,7 +155,7 @@ func evalGather(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       xShape.DType,

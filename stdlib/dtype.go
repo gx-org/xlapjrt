@@ -17,7 +17,7 @@ package stdlib
 import (
 	"fmt"
 
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
@@ -40,7 +40,7 @@ func evalReinterpret(ctx evaluator.Context, call elements.CallAt, fn elements.Fu
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &graph.OutputNode{
+	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       dtype,

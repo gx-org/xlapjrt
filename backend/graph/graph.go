@@ -26,7 +26,7 @@ import (
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gomlx/gopjrt/xlabuilder"
 	"github.com/gx-org/backend/dtype"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
@@ -47,7 +47,7 @@ type (
 	}
 
 	pjrtNode interface {
-		graph.Node
+		ops.Node
 
 		xlaOp() *xlabuilder.Op
 
@@ -56,11 +56,11 @@ type (
 )
 
 var (
-	_ graph.Graph = (*Graph)(nil)
+	_ ops.Graph = (*Graph)(nil)
 )
 
 // New returns a new graph.
-func New(plat *pjrtplatform.Platform, funcName string) graph.Graph {
+func New(plat *pjrtplatform.Platform, funcName string) ops.Graph {
 	return &Graph{
 		plat:     plat,
 		builder:  xlabuilder.New(funcName),
@@ -68,8 +68,8 @@ func New(plat *pjrtplatform.Platform, funcName string) graph.Graph {
 	}
 }
 
-func unpackOutput(outs []*graph.OutputNode) ([]graph.Node, []*shape.Shape) {
-	nodes := make([]graph.Node, len(outs))
+func unpackOutput(outs []*ops.OutputNode) ([]ops.Node, []*shape.Shape) {
+	nodes := make([]ops.Node, len(outs))
 	shapes := make([]*shape.Shape, len(outs))
 	for i, out := range outs {
 		nodes[i] = out.Node
@@ -80,11 +80,11 @@ func unpackOutput(outs []*graph.OutputNode) ([]graph.Node, []*shape.Shape) {
 
 // Compile a node given a set of parameters and using this node as an output.
 // Returns a function that will be run on a device given some inputs.
-func (g *Graph) Compile(dev platform.Device, out, traced []*graph.OutputNode, params []*shape.Shape) (graph.Runner, error) {
-	var outNodes, tracedNodes []graph.Node
+func (g *Graph) Compile(dev platform.Device, out, traced []*ops.OutputNode, params []*shape.Shape) (ops.Runner, error) {
+	var outNodes, tracedNodes []ops.Node
 	outNodes, g.out = unpackOutput(out)
 	tracedNodes, g.traced = unpackOutput(traced)
-	all := append(append([]graph.Node{}, outNodes...), tracedNodes...)
+	all := append(append([]ops.Node{}, outNodes...), tracedNodes...)
 	allTuple, err := g.Tuple(all)
 	if err != nil {
 		return nil, err
@@ -116,12 +116,12 @@ func (g *Graph) Platform() platform.Platform {
 }
 
 // Graph in which nodes are created.
-func (g *Graph) Graph() graph.Graph {
+func (g *Graph) Graph() ops.Graph {
 	return g
 }
 
 // Core returns the builder to build core operations.
-func (g *Graph) Core() graph.CoreBuilder {
+func (g *Graph) Core() ops.CoreBuilder {
 	return g
 }
 
@@ -138,11 +138,11 @@ type Node struct {
 
 var _ pjrtNode = (*Node)(nil)
 
-func (g *Graph) xlaHandle(input graph.Node) *xlabuilder.Op {
+func (g *Graph) xlaHandle(input ops.Node) *xlabuilder.Op {
 	return input.(pjrtNode).xlaOp()
 }
 
-func (g *Graph) xlaHandles(inputs []graph.Node) ([]*xlabuilder.Op, error) {
+func (g *Graph) xlaHandles(inputs []ops.Node) ([]*xlabuilder.Op, error) {
 	hdls := make([]*xlabuilder.Op, len(inputs))
 	for i, node := range inputs {
 		hdls[i] = node.(pjrtNode).xlaOp()
@@ -155,7 +155,7 @@ func (g *Graph) newNode(op *xlabuilder.Op) *Node {
 }
 
 // Graph to which the node belongs to.
-func (n *Node) Graph() graph.Graph {
+func (n *Node) Graph() ops.Graph {
 	return n.graph
 }
 
@@ -189,7 +189,7 @@ func newLiteral[T dtypes.Supported](data []T, dims []int) (*xlabuilder.Literal, 
 }
 
 // Constant returns a node representing a numerical constant value in the graph.
-func (g *Graph) Constant(buffer platform.HostBuffer) (graph.Node, error) {
+func (g *Graph) Constant(buffer platform.HostBuffer) (ops.Node, error) {
 	data := buffer.Acquire()
 	defer buffer.Release()
 	shap := buffer.Shape()
@@ -226,7 +226,7 @@ func (g *Graph) Constant(buffer platform.HostBuffer) (graph.Node, error) {
 }
 
 // Argument returns a node set by a caller when calling the function.
-func (g *Graph) Argument(name string, shape *shape.Shape, index int) (graph.Node, error) {
+func (g *Graph) Argument(name string, shape *shape.Shape, index int) (ops.Node, error) {
 	xlaOp, err := xlabuilder.Parameter(g.builder, name, index, pjrtgx.ToShape(shape))
 	if err != nil {
 		return nil, err
@@ -235,7 +235,7 @@ func (g *Graph) Argument(name string, shape *shape.Shape, index int) (graph.Node
 }
 
 // TupleArgument returns a node representing a tuple parameter of a function.
-func (g *Graph) TupleArgument(name string, index int, shapes []*shape.Shape) (graph.Tuple, error) {
+func (g *Graph) TupleArgument(name string, index int, shapes []*shape.Shape) (ops.Tuple, error) {
 	xlaShape := make([]xlabuilder.Shape, 0, len(shapes))
 	for _, shape := range shapes {
 		xlaShape = append(xlaShape, pjrtgx.ToShape(shape))
@@ -248,7 +248,7 @@ func (g *Graph) TupleArgument(name string, index int, shapes []*shape.Shape) (gr
 }
 
 // UnaryFunc returns a node executing a unary function. f must be an xlabuilder function pointer.
-func (g *Graph) UnaryFunc(x graph.Node, f func(*xlabuilder.Op) (*xlabuilder.Op, error)) (graph.Node, error) {
+func (g *Graph) UnaryFunc(x ops.Node, f func(*xlabuilder.Op) (*xlabuilder.Op, error)) (ops.Node, error) {
 	result, err := f(g.xlaHandle(x))
 	if err != nil {
 		return nil, err
@@ -257,7 +257,7 @@ func (g *Graph) UnaryFunc(x graph.Node, f func(*xlabuilder.Op) (*xlabuilder.Op, 
 }
 
 // BinaryFunc returns a node executing a binary function. f must be an xlabuilder function pointer.
-func (g *Graph) BinaryFunc(x graph.Node, y graph.Node, f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, error)) (graph.Node, error) {
+func (g *Graph) BinaryFunc(x ops.Node, y ops.Node, f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, error)) (ops.Node, error) {
 	result, err := f(g.xlaHandle(x), g.xlaHandle(y))
 	if err != nil {
 		return nil, err
@@ -266,7 +266,7 @@ func (g *Graph) BinaryFunc(x graph.Node, y graph.Node, f func(x *xlabuilder.Op, 
 }
 
 // ReduceFunc returns a node executing a basic reduction. f must be an xlabuilder function pointer.
-func (g *Graph) ReduceFunc(x graph.Node, axes []int, f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) (graph.Node, error) {
+func (g *Graph) ReduceFunc(x ops.Node, axes []int, f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) (ops.Node, error) {
 	// Note the change from XLA's behavior: if no reduction axes are specified, treat this as a no-op.
 	if len(axes) == 0 {
 		return x, nil
@@ -279,7 +279,7 @@ func (g *Graph) ReduceFunc(x graph.Node, axes []int, f func(*xlabuilder.Op, ...i
 }
 
 // Unary returns a node applying a unary operator to a node.
-func (g *Graph) Unary(op *ast.UnaryExpr, x graph.Node) (graph.Node, error) {
+func (g *Graph) Unary(op *ast.UnaryExpr, x ops.Node) (ops.Node, error) {
 	var xlaOp *xlabuilder.Op
 	var err error
 	switch op.Op {
@@ -299,7 +299,7 @@ func (g *Graph) Unary(op *ast.UnaryExpr, x graph.Node) (graph.Node, error) {
 }
 
 // Binary returns a node applying a binary operator between two nodes.
-func (g *Graph) Binary(op *ast.BinaryExpr, x, y graph.Node) (graph.Node, error) {
+func (g *Graph) Binary(op *ast.BinaryExpr, x, y ops.Node) (ops.Node, error) {
 	// TODO(paulchang): If both operands are floating-point, use TotalOrder comparisons.
 	var xlaOp *xlabuilder.Op
 	var err error
@@ -356,7 +356,7 @@ func (g *Graph) Binary(op *ast.BinaryExpr, x, y graph.Node) (graph.Node, error) 
 }
 
 // Reshape returns a reshape operator node.
-func (g *Graph) Reshape(x graph.Node, axisLengths []int) (graph.Node, error) {
+func (g *Graph) Reshape(x ops.Node, axisLengths []int) (ops.Node, error) {
 	xlaOp, err := xlabuilder.Reshape(g.xlaHandle(x), axisLengths...)
 	if err != nil {
 		return nil, err
@@ -365,7 +365,7 @@ func (g *Graph) Reshape(x graph.Node, axisLengths []int) (graph.Node, error) {
 }
 
 // Cast returns a cast/convert operator node.
-func (g *Graph) Cast(x graph.Node, target dtype.DataType) (graph.Node, error) {
+func (g *Graph) Cast(x ops.Node, target dtype.DataType) (ops.Node, error) {
 	xlaDType := pjrtgx.ToDType(target)
 	if xlaDType == dtypes.InvalidDType {
 		return nil, errors.Errorf("cannot convert %s to a XLA data type", target.String())
@@ -378,7 +378,7 @@ func (g *Graph) Cast(x graph.Node, target dtype.DataType) (graph.Node, error) {
 }
 
 // Bitcast returns a bitcast/reinterpret operator node.
-func (g *Graph) Bitcast(x graph.Node, target dtype.DataType) (graph.Node, error) {
+func (g *Graph) Bitcast(x ops.Node, target dtype.DataType) (ops.Node, error) {
 	xlaDType := pjrtgx.ToDType(target)
 	if xlaDType == dtypes.InvalidDType {
 		return nil, errors.Errorf("cannot convert %s to a XLA data type", target.String())
@@ -395,7 +395,7 @@ type tuple struct {
 }
 
 // Element returns a Node representing the ith element of the tuple.
-func (n *tuple) Element(i int) (graph.Node, error) {
+func (n *tuple) Element(i int) (ops.Node, error) {
 	xlaOp, err := xlabuilder.GetTupleElement(n.graph.xlaHandle(n.Node), i)
 	if err != nil {
 		return nil, err
@@ -408,8 +408,8 @@ func (n *tuple) Size() int {
 	return n.Node.op.Shape.TupleSize()
 }
 
-func (n *tuple) Unpack() ([]graph.Node, error) {
-	nodes := make([]graph.Node, 0, n.Size())
+func (n *tuple) Unpack() ([]ops.Node, error) {
+	nodes := make([]ops.Node, 0, n.Size())
 	for i := range n.Size() {
 		node, err := n.Element(i)
 		if err != nil {
@@ -421,7 +421,7 @@ func (n *tuple) Unpack() ([]graph.Node, error) {
 }
 
 // Tuple returns a node grouping multiple nodes together.
-func (g *Graph) Tuple(nodes []graph.Node) (graph.Tuple, error) {
+func (g *Graph) Tuple(nodes []ops.Node) (ops.Tuple, error) {
 	inputs, err := g.xlaHandles(nodes)
 	if err != nil {
 		return nil, err
@@ -434,7 +434,7 @@ func (g *Graph) Tuple(nodes []graph.Node) (graph.Tuple, error) {
 }
 
 // ToXLATuple casts a generic Node to a graph.Tuple node.
-func ToXLATuple(n graph.Node) graph.Tuple {
+func ToXLATuple(n ops.Node) ops.Tuple {
 	if tpl, ok := n.(*tuple); ok {
 		return tpl
 	}
@@ -442,7 +442,7 @@ func ToXLATuple(n graph.Node) graph.Tuple {
 }
 
 // Concat concatenates multiple arrays into a single array.
-func (g *Graph) Concat(axis int, nodes []graph.Node) (graph.Node, error) {
+func (g *Graph) Concat(axis int, nodes []ops.Node) (ops.Node, error) {
 	inputs, err := g.xlaHandles(nodes)
 	if err != nil {
 		return nil, err
@@ -456,7 +456,7 @@ func (g *Graph) Concat(axis int, nodes []graph.Node) (graph.Node, error) {
 }
 
 // Slice returns a slice on a node.
-func (g *Graph) Slice(x graph.Node, i int) (graph.Node, error) {
+func (g *Graph) Slice(x ops.Node, i int) (ops.Node, error) {
 	shape := x.(pjrtNode).BackendShape()
 	rank := len(shape.AxisLengths)
 
@@ -485,7 +485,7 @@ func (g *Graph) Slice(x graph.Node, i int) (graph.Node, error) {
 }
 
 // Transpose transposes the axes of x.
-func (g *Graph) Transpose(x graph.Node, permutation []int) (graph.Node, error) {
+func (g *Graph) Transpose(x ops.Node, permutation []int) (ops.Node, error) {
 	xlaOp, err := xlabuilder.Transpose(g.xlaHandle(x), permutation...)
 	if err != nil {
 		return nil, err
@@ -494,7 +494,7 @@ func (g *Graph) Transpose(x graph.Node, permutation []int) (graph.Node, error) {
 }
 
 // ArgMinMax returns a new argmin/argmax node.
-func (g *Graph) ArgMinMax(x graph.Node, axis int, outputKind ir.Kind, isMin bool) (graph.Node, error) {
+func (g *Graph) ArgMinMax(x ops.Node, axis int, outputKind ir.Kind, isMin bool) (ops.Node, error) {
 	xlaOp, err := xlabuilder.ArgMinMax(g.xlaHandle(x), axis, pjrtgx.ToDType(outputKind.DType()), isMin)
 	if err != nil {
 		return nil, err
@@ -503,7 +503,7 @@ func (g *Graph) ArgMinMax(x graph.Node, axis int, outputKind ir.Kind, isMin bool
 }
 
 // BroadcastInDim broadcasts x to an output with the given shape.
-func (g *Graph) BroadcastInDim(x graph.Node, shape *shape.Shape, broadcastAxes []int) (graph.Node, error) {
+func (g *Graph) BroadcastInDim(x ops.Node, shape *shape.Shape, broadcastAxes []int) (ops.Node, error) {
 	xlaOp, err := xlabuilder.BroadcastInDim(g.xlaHandle(x), pjrtgx.ToShape(shape), broadcastAxes)
 	if err != nil {
 		return nil, err
@@ -512,7 +512,7 @@ func (g *Graph) BroadcastInDim(x graph.Node, shape *shape.Shape, broadcastAxes [
 }
 
 // Gather exposes the full XLA Gather operation.
-func (g *Graph) Gather(x graph.Node, startIndices graph.Node, indexVectorAxis int, offsetAxes []int, collapsedSliceAxes []int, startIndexMap []int, sliceSizes []int, indicesAreSorted bool) (graph.Node, error) {
+func (g *Graph) Gather(x ops.Node, startIndices ops.Node, indexVectorAxis int, offsetAxes []int, collapsedSliceAxes []int, startIndexMap []int, sliceSizes []int, indicesAreSorted bool) (ops.Node, error) {
 	xlaOp, err := xlabuilder.Gather(g.xlaHandle(x), g.xlaHandle(startIndices), indexVectorAxis, offsetAxes, collapsedSliceAxes, startIndexMap, sliceSizes, indicesAreSorted)
 	if err != nil {
 		return nil, err
@@ -521,7 +521,7 @@ func (g *Graph) Gather(x graph.Node, startIndices graph.Node, indexVectorAxis in
 }
 
 // Split implements the split operation in terms of slice, with static indices.
-func (g *Graph) Split(x graph.Node, axis int, numSplits int) (graph.Node, error) {
+func (g *Graph) Split(x ops.Node, axis int, numSplits int) (ops.Node, error) {
 	shap := x.(pjrtNode).BackendShape()
 	rank := len(shap.AxisLengths)
 
@@ -532,7 +532,7 @@ func (g *Graph) Split(x graph.Node, axis int, numSplits int) (graph.Node, error)
 		return nil, errors.Errorf("axis %d has size %d which is not divisible by %d numSplits", axis, shap.AxisLengths[axis], numSplits)
 	}
 	stride := shap.AxisLengths[axis] / numSplits
-	slicedNodes := make([]graph.Node, numSplits)
+	slicedNodes := make([]ops.Node, numSplits)
 	for i := range numSplits {
 		starts := make([]int, rank)
 		limits := make([]int, rank)
@@ -555,7 +555,7 @@ func (g *Graph) Split(x graph.Node, axis int, numSplits int) (graph.Node, error)
 	outputDims := append([]int{1}, shap.AxisLengths...)
 	outputDims[axis+1] = stride
 
-	reshapedNodes := make([]graph.Node, numSplits)
+	reshapedNodes := make([]ops.Node, numSplits)
 	for i := range slicedNodes {
 		reshapedNode, err := g.Reshape(slicedNodes[i], outputDims)
 		if err != nil {
@@ -568,7 +568,7 @@ func (g *Graph) Split(x graph.Node, axis int, numSplits int) (graph.Node, error)
 }
 
 // Set returns a node to set a slice in an array.
-func (g *Graph) Set(x, updates, position graph.Node) (graph.Node, error) {
+func (g *Graph) Set(x, updates, position ops.Node) (ops.Node, error) {
 	var indexVectorDim int
 
 	updatesShape := updates.(pjrtNode).BackendShape()
@@ -596,7 +596,7 @@ func (g *Graph) Set(x, updates, position graph.Node) (graph.Node, error) {
 
 // DotGeneral returns a generic dot product node. Batch and reduce axes are given as pairs of
 // equal-length slices, left hand axes followed by right hand axes.
-func (g *Graph) DotGeneral(x, y graph.Node, batchAxes, reduceAxes [2][]int) (graph.Node, error) {
+func (g *Graph) DotGeneral(x, y ops.Node, batchAxes, reduceAxes [2][]int) (ops.Node, error) {
 	xlaOp, err := xlabuilder.DotGeneral(
 		g.xlaHandle(x), reduceAxes[0], batchAxes[0],
 		g.xlaHandle(y), reduceAxes[1], batchAxes[1])
@@ -607,7 +607,7 @@ func (g *Graph) DotGeneral(x, y graph.Node, batchAxes, reduceAxes [2][]int) (gra
 }
 
 // Call returns a node that invokes a subgraph with the given result node.
-func (g *Graph) Call(sg graph.Subgraph, args ...graph.Node) (graph.Node, error) {
+func (g *Graph) Call(sg ops.Subgraph, args ...ops.Node) (ops.Node, error) {
 	subcomp, err := g.xlaSubcomputation(sg)
 	if err != nil {
 		return nil, err
@@ -621,8 +621,8 @@ func (g *Graph) Call(sg graph.Subgraph, args ...graph.Node) (graph.Node, error) 
 	if err != nil {
 		return nil, err
 	}
-	var result graph.Node = g.newNode(xlaOp)
-	if _, ok := sg.Result.Node.(graph.Tuple); ok {
+	var result ops.Node = g.newNode(xlaOp)
+	if _, ok := sg.Result.Node.(ops.Tuple); ok {
 		// If the result node was a tuple, the subgraph's return value will also be a tuple.
 		result = ToXLATuple(result)
 	}
@@ -630,7 +630,7 @@ func (g *Graph) Call(sg graph.Subgraph, args ...graph.Node) (graph.Node, error) 
 }
 
 // Subgraph returns a Graph instance that maps to a new subgraph.
-func (g *Graph) Subgraph(name string) (graph.Graph, error) {
+func (g *Graph) Subgraph(name string) (ops.Graph, error) {
 	return &Graph{
 		plat:    g.plat,
 		builder: g.builder.CreateSubBuilder(name),
@@ -639,7 +639,7 @@ func (g *Graph) Subgraph(name string) (graph.Graph, error) {
 
 // RngBitGenerator takes RNG state and generates the given shape filled with random values, and
 // returns the new state plus generated values.
-func (g *Graph) RngBitGenerator(state graph.Node, shape *shape.Shape) (graph.Node, graph.Node, error) {
+func (g *Graph) RngBitGenerator(state ops.Node, shape *shape.Shape) (ops.Node, ops.Node, error) {
 	newState, values, err := xlabuilder.RngBitGenerator(g.xlaHandle(state), pjrtgx.ToShape(shape))
 	if err != nil {
 		return nil, nil, err
@@ -647,13 +647,13 @@ func (g *Graph) RngBitGenerator(state graph.Node, shape *shape.Shape) (graph.Nod
 	return g.newNode(newState), g.newNode(values), nil
 }
 
-func (g *Graph) xlaSubcomputation(sg graph.Subgraph) (*xlabuilder.XlaComputation, error) {
+func (g *Graph) xlaSubcomputation(sg ops.Subgraph) (*xlabuilder.XlaComputation, error) {
 	pjrtsg := sg.Graph.(*Graph)
 	return pjrtsg.builder.Build(pjrtsg.xlaHandle(sg.Result.Node))
 }
 
 // While returns a while loop node.
-func (g *Graph) While(cond, body graph.Subgraph, state graph.Node) (graph.Node, error) {
+func (g *Graph) While(cond, body ops.Subgraph, state ops.Node) (ops.Node, error) {
 	condSG, err := g.xlaSubcomputation(cond)
 	if err != nil {
 		return nil, err
@@ -667,8 +667,8 @@ func (g *Graph) While(cond, body graph.Subgraph, state graph.Node) (graph.Node, 
 	if err != nil {
 		return nil, err
 	}
-	var result graph.Node = g.newNode(xlaOp)
-	if _, ok := state.(graph.Tuple); ok {
+	var result ops.Node = g.newNode(xlaOp)
+	if _, ok := state.(ops.Tuple); ok {
 		result = ToXLATuple(result)
 	}
 	return result, nil

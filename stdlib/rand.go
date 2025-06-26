@@ -16,7 +16,7 @@ package stdlib
 
 import (
 	"github.com/gx-org/backend/dtype"
-	"github.com/gx-org/backend/graph"
+	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
@@ -63,7 +63,7 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 	stateArrayAt := elements.NewExprAt(call.File(), &ir.ValueRef{
 		Stor: stateArray.Storage(),
 	})
-	philoxStateElement, err := grapheval.ElementFromNode(stateArrayAt, &graph.OutputNode{
+	philoxStateElement, err := grapheval.ElementFromNode(stateArrayAt, &ops.OutputNode{
 		Node:  newState,
 		Shape: philoxStateShape,
 	})
@@ -71,7 +71,7 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 		return nil, err
 	}
 	randValueAt := elements.NewExprAt(call.File(), call.Node().ExprFromResult(1))
-	valuesElement, err := grapheval.ElementFromNode(randValueAt, &graph.OutputNode{
+	valuesElement, err := grapheval.ElementFromNode(randValueAt, &ops.OutputNode{
 		Node:  values,
 		Shape: targetShape,
 	})
