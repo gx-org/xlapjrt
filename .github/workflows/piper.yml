@@ -19,6 +19,7 @@ name: Piper
 on:
   push:
     branches: ["piper"]
+  workflow_dispatch:
 
 env:
   GOPJRT_NOSUDO: true
