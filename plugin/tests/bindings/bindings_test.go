@@ -24,7 +24,6 @@ import (
 )
 
 func TestGoBindings(t *testing.T) {
-	t.SkipNow() // TODO(degris): FIX ASAP
 	bld := gxtesting.NewBuilderStaticSource(pjrtstdlib.Stdlib)
 	rtm, err := plugin.NewWithBuilder("cpu", bld)
 	if err != nil {
