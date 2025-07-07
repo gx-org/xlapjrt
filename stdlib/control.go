@@ -53,7 +53,7 @@ func toStruct(ctx evaluator.Context, exprAt elements.ExprAt, tpl ops.Tuple, shap
 			Stor: field.Storage(),
 		}
 	}
-	els, err := grapheval.ElementsFromTupleNode(ctx.Evaluation().Evaluator().ArrayOps().Graph(), exprAt.File(), exprAt.Node(), tpl, fieldExprs, shapes)
+	els, err := grapheval.ElementsFromTupleNode(ctx.Evaluator().ArrayOps().Graph(), exprAt.File(), exprAt.Node(), tpl, fieldExprs, shapes)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func buildSubgraph(ctx evaluator.Context, call elements.CallAt, fn ir.Func, tupl
 	if err != nil {
 		return nil, err
 	}
-	evaluator := ctx.Evaluation().Evaluator()
+	evaluator := ctx.Evaluator()
 	subeval := grapheval.New(evaluator.Importer(), nil, subgraph, evaluator.NewFunc)
 	resultElt, err := ctx.EvalFunctionToElement(subeval, fn, []elements.Element{stateStruct})
 	if err != nil {
@@ -113,7 +113,7 @@ func evalWhile(ctx evaluator.Context, call elements.CallAt, fn elements.Func, ir
 	g := pjrtGraph(ctx)
 
 	stateStruct := (args[0]).(*elements.Struct)
-	stateNodes, stateShapes, err := toNodes(ctx.Evaluation().Evaluator().ArrayOps(), stateStruct)
+	stateNodes, stateShapes, err := toNodes(ctx.Evaluator().ArrayOps(), stateStruct)
 	if err != nil {
 		return nil, err
 	}

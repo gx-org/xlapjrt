@@ -26,7 +26,7 @@ import (
 )
 
 func evalReinterpret(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
-	argNode, _, err := grapheval.NodeFromElement(ctx.Evaluation().Evaluator().ArrayOps(), args[0])
+	argNode, _, err := grapheval.NodeFromElement(ctx.Evaluator().ArrayOps(), args[0])
 	if err != nil {
 		return nil, err
 	}

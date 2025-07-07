@@ -29,7 +29,7 @@ import (
 func evalConcat(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
 	xs := make([]ops.Node, len(args)-1)
 	xShapes := make([]*shape.Shape, len(args)-1)
-	ao := ctx.Evaluation().Evaluator().ArrayOps()
+	ao := ctx.Evaluator().ArrayOps()
 	for i, arg := range args[1:] {
 		var err error
 		xs[i], xShapes[i], err = grapheval.NodeFromElement(ao, arg)
@@ -64,7 +64,7 @@ func evalLen(ctx evaluator.Context, call elements.CallAt, _ elements.Func, _ *ir
 	if err != nil {
 		return nil, err
 	}
-	out, err := ctx.Evaluation().Evaluator().ElementFromAtom(elements.NewExprAt(ctx.File(), call.Node()), value)
+	out, err := ctx.Evaluator().ElementFromAtom(elements.NewExprAt(ctx.File(), call.Node()), value)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func evalLen(ctx evaluator.Context, call elements.CallAt, _ elements.Func, _ *ir
 }
 
 func evalSplit(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
-	ao := ctx.Evaluation().Evaluator().ArrayOps()
+	ao := ctx.Evaluator().ArrayOps()
 	node, firstArgShape, err := grapheval.NodeFromElement(ao, args[1])
 	if err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func evalGather(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 		offsetDims[ii] = outputSubRank + ii
 	}
 
-	ao := ctx.Evaluation().Evaluator().ArrayOps()
+	ao := ctx.Evaluator().ArrayOps()
 	x, xShape, err := grapheval.NodeFromElement(ao, args[0])
 	if err != nil {
 		return nil, err

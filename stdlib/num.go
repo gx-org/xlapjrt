@@ -30,7 +30,7 @@ import (
 
 func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) interp.FuncBuiltin {
 	return func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
-		x, xShape, err := grapheval.NodeFromElement(ctx.Evaluation().Evaluator().ArrayOps(), args[0])
+		x, xShape, err := grapheval.NodeFromElement(ctx.Evaluator().ArrayOps(), args[0])
 		if err != nil {
 			return nil, err
 		}
@@ -58,7 +58,7 @@ func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) in
 }
 
 func evalTranspose(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
-	argNode, argShape, err := grapheval.NodeFromElement(ctx.Evaluation().Evaluator().ArrayOps(), args[0])
+	argNode, argShape, err := grapheval.NodeFromElement(ctx.Evaluator().ArrayOps(), args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func evalTranspose(ctx evaluator.Context, call elements.CallAt, fn elements.Func
 }
 
 func evalEinsum(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
-	evaluator := ctx.Evaluation().Evaluator()
+	evaluator := ctx.Evaluator()
 	left, leftShape, err := grapheval.NodeFromElement(evaluator.ArrayOps(), args[0])
 	if err != nil {
 		return nil, err
@@ -151,7 +151,7 @@ func evalIota(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irF
 }
 
 func evalArgmax(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
-	argNode, _, err := grapheval.NodeFromElement(ctx.Evaluation().Evaluator().ArrayOps(), args[0])
+	argNode, _, err := grapheval.NodeFromElement(ctx.Evaluator().ArrayOps(), args[0])
 	if err != nil {
 		return nil, err
 	}
