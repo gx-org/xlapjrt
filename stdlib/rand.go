@@ -19,10 +19,10 @@ import (
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/grapheval"
-	"github.com/gx-org/gx/interp"
 	xlagraph "github.com/gx-org/xlapjrt/backend/graph"
 )
 
@@ -79,7 +79,7 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 		return nil, err
 	}
 	return []ir.Element{
-		elements.NewNamedType(interp.NewRunFunc, philox.NamedType(), elements.NewStruct(
+		elements.NewNamedType(context.NewRunFunc, philox.NamedType(), elements.NewStruct(
 			philoxStruct,
 			philoxStateAt.ToValueAt(),
 			map[string]ir.Element{"state": philoxStateElement},
