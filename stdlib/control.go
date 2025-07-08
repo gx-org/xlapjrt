@@ -20,14 +20,15 @@ import (
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/grapheval"
 	pjrtgraph "github.com/gx-org/xlapjrt/backend/graph"
 )
 
-func toNodes(ao elements.ArrayOps, elts ...elements.Element) ([]ops.Node, []*shape.Shape, error) {
-	elts, err := elements.Flatten(elts...)
+func toNodes(ao elements.ArrayOps, elts ...ir.Element) ([]ops.Node, []*shape.Shape, error) {
+	elts, err := flatten.Flatten(elts...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -60,7 +61,7 @@ func toStruct(ctx evaluator.Context, exprAt elements.ExprAt, tpl ops.Tuple, shap
 	return elements.NewStructFromElements(structTyp, exprAt.ToValueAt(), els), nil
 }
 
-func getOutputNode(ao elements.ArrayOps, elts []elements.Element) (ops.OutputNode, error) {
+func getOutputNode(ao elements.ArrayOps, elts []ir.Element) (ops.OutputNode, error) {
 	if len(elts) != 1 {
 		return ops.OutputNode{}, errors.Errorf("cannot get the output node of %d element(s)", len(elts))
 	}
@@ -68,7 +69,7 @@ func getOutputNode(ao elements.ArrayOps, elts []elements.Element) (ops.OutputNod
 	return ops.OutputNode{Node: node, Shape: shape}, err
 }
 
-func packXLATuple(ao elements.ArrayOps, elts []elements.Element) (ops.OutputNode, error) {
+func packXLATuple(ao elements.ArrayOps, elts []ir.Element) (ops.OutputNode, error) {
 	outputNodes, _, err := toNodes(ao, elts...)
 	if err != nil {
 		return ops.OutputNode{}, err
@@ -80,7 +81,7 @@ func packXLATuple(ao elements.ArrayOps, elts []elements.Element) (ops.OutputNode
 	return ops.OutputNode{Node: tupleNode, Shape: &shape.Shape{DType: dtype.Invalid}}, nil
 }
 
-func buildSubgraph(ctx evaluator.Context, call elements.CallAt, fn ir.Func, tupleShapes []*shape.Shape, structTyp *ir.StructType, resultHandler func(elements.ArrayOps, []elements.Element) (ops.OutputNode, error)) (*ops.Subgraph, error) {
+func buildSubgraph(ctx evaluator.Context, call elements.CallAt, fn ir.Func, tupleShapes []*shape.Shape, structTyp *ir.StructType, resultHandler func(elements.ArrayOps, []ir.Element) (ops.OutputNode, error)) (*ops.Subgraph, error) {
 	g := pjrtGraph(ctx)
 	subgraph, err := g.Core().Subgraph(fn.Name())
 	if err != nil {
@@ -98,7 +99,7 @@ func buildSubgraph(ctx evaluator.Context, call elements.CallAt, fn ir.Func, tupl
 	}
 	evaluator := ctx.Evaluator()
 	subeval := grapheval.New(evaluator.Importer(), nil, subgraph, evaluator.NewFunc)
-	resultElt, err := ctx.EvalFunctionToElement(subeval, fn, []elements.Element{stateStruct})
+	resultElt, err := ctx.EvalFunctionToElement(subeval, fn, []ir.Element{stateStruct})
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +110,7 @@ func buildSubgraph(ctx evaluator.Context, call elements.CallAt, fn ir.Func, tupl
 	return &ops.Subgraph{Graph: subgraph, Result: output}, nil
 }
 
-func evalWhile(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []elements.Element) ([]elements.Element, error) {
+func evalWhile(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	g := pjrtGraph(ctx)
 
 	stateStruct := (args[0]).(*elements.Struct)
@@ -141,5 +142,5 @@ func evalWhile(ctx evaluator.Context, call elements.CallAt, fn elements.Func, ir
 	if err != nil {
 		return nil, err
 	}
-	return []elements.Element{out}, nil
+	return []ir.Element{out}, nil
 }
