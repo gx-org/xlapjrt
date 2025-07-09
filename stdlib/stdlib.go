@@ -82,8 +82,7 @@ func xlaUnaryFunc(f func(*xlabuilder.Op) (*xlabuilder.Op, error)) interp.FuncBui
 		if len(args) != 1 {
 			return nil, fmt.Errorf("unary function expects 1 argument, got %d", len(args))
 		}
-		ao := ctx.Evaluator().ArrayOps()
-		x, xShape, err := grapheval.NodeFromElement(ao, args[0])
+		x, xShape, err := grapheval.NodeFromElement(ctx, args[0])
 		if err != nil {
 			return nil, err
 		}
@@ -132,12 +131,11 @@ func xlaBinaryFunc(f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, e
 		if len(args) != 2 {
 			return nil, fmt.Errorf("binary function expects 2 arguments, got %d", len(args))
 		}
-		ao := ctx.Evaluator().ArrayOps()
-		x, xShape, err := grapheval.NodeFromElement(ao, args[0])
+		x, xShape, err := grapheval.NodeFromElement(ctx, args[0])
 		if err != nil {
 			return nil, err
 		}
-		y, yShape, err := grapheval.NodeFromElement(ao, args[1])
+		y, yShape, err := grapheval.NodeFromElement(ctx, args[1])
 		if err != nil {
 			return nil, err
 		}

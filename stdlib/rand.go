@@ -43,7 +43,7 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 		return nil, err
 	}
 	evaluator := ctx.Evaluator()
-	stateNode, _, err := grapheval.NodeFromElement(evaluator.ArrayOps(), field)
+	stateNode, _, err := grapheval.NodeFromElement(ctx, field)
 	if err != nil {
 		return nil, err
 	}
