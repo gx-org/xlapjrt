@@ -21,6 +21,7 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
+	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/grapheval"
@@ -81,7 +82,7 @@ func packXLATuple(ao elements.ArrayOps, elts []ir.Element) (ops.OutputNode, erro
 	return ops.OutputNode{Node: tupleNode, Shape: &shape.Shape{DType: dtype.Invalid}}, nil
 }
 
-func buildSubgraph(ctx evaluator.Context, call elements.CallAt, fn ir.Func, tupleShapes []*shape.Shape, structTyp *ir.StructType, resultHandler func(elements.ArrayOps, []ir.Element) (ops.OutputNode, error)) (*ops.Subgraph, error) {
+func buildSubgraph(ctx *context.Context, call elements.CallAt, fn ir.Func, tupleShapes []*shape.Shape, structTyp *ir.StructType, resultHandler func(elements.ArrayOps, []ir.Element) (ops.OutputNode, error)) (*ops.Subgraph, error) {
 	g := pjrtGraph(ctx)
 	subgraph, err := g.Core().Subgraph(fn.Name())
 	if err != nil {
@@ -110,8 +111,9 @@ func buildSubgraph(ctx evaluator.Context, call elements.CallAt, fn ir.Func, tupl
 	return &ops.Subgraph{Graph: subgraph, Result: output}, nil
 }
 
-func evalWhile(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	g := pjrtGraph(ctx)
+func evalWhile(ectx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	g := pjrtGraph(ectx)
+	ctx := ectx.(*context.Context)
 
 	stateStruct := (args[0]).(*elements.Struct)
 	stateNodes, stateShapes, err := toNodes(ctx.Evaluator().ArrayOps(), stateStruct)
