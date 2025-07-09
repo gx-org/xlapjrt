@@ -64,7 +64,7 @@ func evalLen(ctx evaluator.Context, call elements.CallAt, _ elements.Func, _ *ir
 	if err != nil {
 		return nil, err
 	}
-	out, err := ctx.Evaluator().ElementFromAtom(elements.NewExprAt(ctx.File(), call.Node()), value)
+	out, err := ctx.Evaluator().ElementFromAtom(ctx, call.Node(), value)
 	if err != nil {
 		return nil, err
 	}
