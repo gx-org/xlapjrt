@@ -21,10 +21,10 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/interp/flatten"
-	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/grapheval"
+	"github.com/gx-org/gx/interp"
 	pjrtgraph "github.com/gx-org/xlapjrt/backend/graph"
 )
 
@@ -83,7 +83,7 @@ func packXLATuple(ctx evaluator.Context, elts []ir.Element) (ops.OutputNode, err
 }
 
 func buildSubgraph(ectx evaluator.Context, call elements.CallAt, fn ir.Func, tupleShapes []*shape.Shape, structTyp *ir.StructType, resultHandler func(evaluator.Context, []ir.Element) (ops.OutputNode, error)) (*ops.Subgraph, error) {
-	ctx := ectx.(*context.Context)
+	ctx := ectx.(*interp.FileScope)
 	g := pjrtGraph(ctx)
 	subgraph, err := g.Core().Subgraph(fn.Name())
 	if err != nil {

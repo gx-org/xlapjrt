@@ -19,10 +19,10 @@ import (
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/context"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/grapheval"
+	"github.com/gx-org/gx/interp"
 	xlagraph "github.com/gx-org/xlapjrt/backend/graph"
 )
 
@@ -32,6 +32,7 @@ var philoxStateShape = &shape.Shape{
 }
 
 func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element, dtyp dtype.DataType) ([]ir.Element, error) {
+	fitp := ctx.(*interp.FileScope)
 	philox := fn.Recv().Element
 	philoxStruct := ir.Underlying(philox.NamedType()).(*ir.StructType)
 	stateArray := philoxStruct.Fields.FindField("state")
@@ -79,7 +80,7 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 		return nil, err
 	}
 	return []ir.Element{
-		elements.NewNamedType(context.NewRunFunc, philox.NamedType(), elements.NewStruct(
+		elements.NewNamedType(fitp.NewFunc, philox.NamedType(), elements.NewStruct(
 			philoxStruct,
 			philoxStateAt.ToValueAt(),
 			map[string]ir.Element{"state": philoxStateElement},
