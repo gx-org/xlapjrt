@@ -100,7 +100,7 @@ func buildSubgraph(ectx evaluator.Context, call elements.CallAt, fn ir.Func, tup
 		return nil, err
 	}
 	evaluator := ctx.Evaluator().(*grapheval.Evaluator)
-	subeval := grapheval.New(evaluator.Importer(), nil, subgraph, ctx.NewFunc)
+	subeval := grapheval.New(evaluator.Importer(), nil, subgraph)
 	resultElt, err := ctx.EvalFunctionToElement(subeval, fn, []ir.Element{stateStruct})
 	if err != nil {
 		return nil, err
