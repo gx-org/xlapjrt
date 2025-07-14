@@ -23,9 +23,10 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/grapheval"
+	"github.com/gx-org/gx/interp"
 )
 
-func evalReinterpret(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalReinterpret(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	argNode, _, err := grapheval.NodeFromElement(ctx, args[0])
 	if err != nil {
 		return nil, err

@@ -29,7 +29,7 @@ import (
 )
 
 func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) interp.FuncBuiltin {
-	return func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	return func(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 		x, xShape, err := grapheval.NodeFromElement(ctx, args[0])
 		if err != nil {
 			return nil, err
@@ -57,7 +57,7 @@ func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) in
 	}
 }
 
-func evalTranspose(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalTranspose(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	argNode, argShape, err := grapheval.NodeFromElement(ctx, args[0])
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func evalTranspose(ctx evaluator.Context, call elements.CallAt, fn elements.Func
 	})
 }
 
-func evalEinsum(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalEinsum(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	left, leftShape, err := grapheval.NodeFromElement(ctx, args[0])
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func evalEinsum(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 	})
 }
 
-func evalIota(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalIota(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	axes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -149,7 +149,7 @@ func evalIota(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irF
 	})
 }
 
-func evalArgmax(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalArgmax(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	argNode, _, err := grapheval.NodeFromElement(ctx, args[0])
 	if err != nil {
 		return nil, err

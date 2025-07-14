@@ -46,7 +46,7 @@ func toNodes(ctx ir.Evaluator, elts ...ir.Element) ([]ops.Node, []*shape.Shape, 
 	return result, shapes, nil
 }
 
-func toStruct(ctx evaluator.Context, exprAt elements.ExprAt, tpl ops.Tuple, shapes []*shape.Shape, structTyp *ir.StructType) (*elements.Struct, error) {
+func toStruct(ctx evaluator.Context, exprAt elements.ExprAt, tpl ops.Tuple, shapes []*shape.Shape, structTyp *ir.StructType) (*interp.Struct, error) {
 	// Construct dummy expressions for all the fields of the structure to keep track of the value types.
 	fieldExprs := make([]ir.AssignableExpr, structTyp.NumFields())
 	for i, field := range structTyp.Fields.Fields() {
@@ -59,7 +59,7 @@ func toStruct(ctx evaluator.Context, exprAt elements.ExprAt, tpl ops.Tuple, shap
 	if err != nil {
 		return nil, err
 	}
-	return elements.NewStructFromElements(structTyp, exprAt.ToValueAt(), els), nil
+	return interp.NewStructFromElements(structTyp, exprAt.ToValueAt(), els), nil
 }
 
 func getOutputNode(ctx evaluator.Context, elts []ir.Element) (ops.OutputNode, error) {
@@ -112,17 +112,17 @@ func buildSubgraph(ectx evaluator.Context, call elements.CallAt, fn ir.Func, tup
 	return &ops.Subgraph{Graph: subgraph, Result: output}, nil
 }
 
-func evalWhile(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalWhile(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	g := pjrtGraph(ctx)
 
-	stateStruct := (args[0]).(*elements.Struct)
+	stateStruct := (args[0]).(*interp.Struct)
 	stateNodes, stateShapes, err := toNodes(ctx, stateStruct)
 	if err != nil {
 		return nil, err
 	}
 
-	cond := args[1].(elements.Func)
-	body := args[2].(elements.Func)
+	cond := args[1].(interp.Func)
+	body := args[2].(interp.Func)
 	condSG, err := buildSubgraph(ctx, call, cond.Func(), stateShapes, stateStruct.StructType(), getOutputNode)
 	if err != nil {
 		return nil, err

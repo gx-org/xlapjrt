@@ -31,15 +31,15 @@ var philoxStateShape = &shape.Shape{
 	AxisLengths: []int{3},
 }
 
-func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element, dtyp dtype.DataType) ([]ir.Element, error) {
+func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element, dtyp dtype.DataType) ([]ir.Element, error) {
 	fitp := ctx.(*interp.FileScope)
 	philox := fn.Recv().Element
 	philoxStruct := ir.Underlying(philox.NamedType()).(*ir.StructType)
 	stateArray := philoxStruct.Fields.FindField("state")
-	field, err := philox.Select(elements.NewNodeAt(ctx.File(), &ir.SelectorExpr{
+	field, err := philox.Select(fitp, &ir.SelectorExpr{
 		X:    call.Node(),
 		Stor: stateArray.Storage(),
-	}))
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 		return nil, err
 	}
 	return []ir.Element{
-		elements.NewNamedType(fitp.NewFunc, philox.NamedType(), elements.NewStruct(
+		interp.NewNamedType(fitp.NewFunc, philox.NamedType(), interp.NewStruct(
 			philoxStruct,
 			philoxStateAt.ToValueAt(),
 			map[string]ir.Element{"state": philoxStateElement},
@@ -89,10 +89,10 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 	}, nil
 }
 
-func evalPhiloxUint32(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalPhiloxUint32(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	return evalPhilox(ctx, call, fn, irFunc, args, dtype.Uint32)
 }
 
-func evalPhiloxUint64(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalPhiloxUint64(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	return evalPhilox(ctx, call, fn, irFunc, args, dtype.Uint64)
 }

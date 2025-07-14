@@ -24,9 +24,10 @@ import (
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/grapheval"
+	"github.com/gx-org/gx/interp"
 )
 
-func evalConcat(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalConcat(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	xs := make([]ops.Node, len(args)-1)
 	xShapes := make([]*shape.Shape, len(args)-1)
 	for i, arg := range args[1:] {
@@ -53,7 +54,7 @@ func evalConcat(ctx evaluator.Context, call elements.CallAt, fn elements.Func, i
 	})
 }
 
-func evalLen(ctx evaluator.Context, call elements.CallAt, _ elements.Func, _ *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalLen(ctx evaluator.Context, call elements.CallAt, _ interp.Func, _ *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	shape, err := elements.ShapeFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -70,7 +71,7 @@ func evalLen(ctx evaluator.Context, call elements.CallAt, _ elements.Func, _ *ir
 	return []ir.Element{out}, nil
 }
 
-func evalSplit(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalSplit(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	node, firstArgShape, err := grapheval.NodeFromElement(ctx, args[1])
 	if err != nil {
 		return nil, err
@@ -96,7 +97,7 @@ func evalSplit(ctx evaluator.Context, call elements.CallAt, fn elements.Func, ir
 	})
 }
 
-func evalGather(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalGather(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	inputShape, err := elements.ShapeFromElement(args[0])
 	if err != nil {
 		return nil, err

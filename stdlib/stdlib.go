@@ -78,7 +78,7 @@ var Stdlib = &impl.Stdlib{
 }
 
 func xlaUnaryFunc(f func(*xlabuilder.Op) (*xlabuilder.Op, error)) interp.FuncBuiltin {
-	return func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	return func(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("unary function expects 1 argument, got %d", len(args))
 		}
@@ -127,7 +127,7 @@ func matmulShape(x, y *shape.Shape) *shape.Shape {
 }
 
 func xlaBinaryFunc(f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, error), shapeF func(x, y *shape.Shape) *shape.Shape) interp.FuncBuiltin {
-	return func(ctx evaluator.Context, call elements.CallAt, fn elements.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	return func(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 		if len(args) != 2 {
 			return nil, fmt.Errorf("binary function expects 2 arguments, got %d", len(args))
 		}
