@@ -55,7 +55,7 @@ func evalConcat(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 }
 
 func evalLen(ctx evaluator.Context, call elements.CallAt, _ interp.Func, _ *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	shape, err := elements.ShapeFromElement(args[0])
+	shape, err := interp.ShapeFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -98,11 +98,11 @@ func evalSplit(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFu
 }
 
 func evalGather(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	inputShape, err := elements.ShapeFromElement(args[0])
+	inputShape, err := interp.ShapeFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
-	indicesShape, err := elements.ShapeFromElement(args[1])
+	indicesShape, err := interp.ShapeFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
