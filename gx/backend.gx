@@ -1,0 +1,5 @@
+package gx
+
+type backend struct{}
+
+func Backend(plugin string) backend
