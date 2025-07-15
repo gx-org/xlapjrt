@@ -59,7 +59,7 @@ func toStruct(ctx evaluator.Context, exprAt elements.ExprAt, tpl ops.Tuple, shap
 	if err != nil {
 		return nil, err
 	}
-	return interp.NewStructFromElements(structTyp, exprAt.ToValueAt(), els), nil
+	return interp.NewStructFromElements(structTyp, els), nil
 }
 
 func getOutputNode(ctx evaluator.Context, elts []ir.Element) (ops.OutputNode, error) {

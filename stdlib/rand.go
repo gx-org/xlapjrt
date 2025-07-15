@@ -36,7 +36,7 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	philox := fn.Recv().Element
 	philoxStruct := ir.Underlying(philox.NamedType()).(*ir.StructType)
 	stateArray := philoxStruct.Fields.FindField("state")
-	field, err := philox.Select(fitp, &ir.SelectorExpr{
+	field, err := philox.Select(&ir.SelectorExpr{
 		X:    call.Node(),
 		Stor: stateArray.Storage(),
 	})
@@ -59,8 +59,6 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 		return nil, err
 	}
 
-	philoxState := call.Node().ExprFromResult(0)
-	philoxStateAt := elements.NewExprAt(call.File(), philoxState)
 	stateArrayAt := elements.NewExprAt(call.File(), &ir.ValueRef{
 		Stor: stateArray.Storage(),
 	})
@@ -82,7 +80,6 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	return []ir.Element{
 		interp.NewNamedType(fitp.NewFunc, philox.NamedType(), interp.NewStruct(
 			philoxStruct,
-			philoxStateAt.ToValueAt(),
 			map[string]ir.Element{"state": philoxStateElement},
 		)),
 		valuesElement,
