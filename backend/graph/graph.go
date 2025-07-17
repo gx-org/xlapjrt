@@ -607,7 +607,7 @@ func (g *Graph) DotGeneral(x, y ops.Node, batchAxes, reduceAxes [2][]int) (ops.N
 }
 
 // Call returns a node that invokes a subgraph with the given result node.
-func (g *Graph) Call(sg ops.Subgraph, args ...ops.Node) (ops.Node, error) {
+func (g *Graph) Call(sg *ops.Subgraph, args ...ops.Node) (ops.Node, error) {
 	subcomp, err := g.xlaSubcomputation(sg)
 	if err != nil {
 		return nil, err
@@ -647,13 +647,13 @@ func (g *Graph) RngBitGenerator(state ops.Node, shape *shape.Shape) (ops.Node, o
 	return g.newNode(newState), g.newNode(values), nil
 }
 
-func (g *Graph) xlaSubcomputation(sg ops.Subgraph) (*xlabuilder.XlaComputation, error) {
+func (g *Graph) xlaSubcomputation(sg *ops.Subgraph) (*xlabuilder.XlaComputation, error) {
 	pjrtsg := sg.Graph.(*Graph)
 	return pjrtsg.builder.Build(pjrtsg.xlaHandle(sg.Result.Node))
 }
 
 // While returns a while loop node.
-func (g *Graph) While(cond, body ops.Subgraph, state ops.Node) (ops.Node, error) {
+func (g *Graph) While(cond, body *ops.Subgraph, state ops.Node) (ops.Node, error) {
 	condSG, err := g.xlaSubcomputation(cond)
 	if err != nil {
 		return nil, err

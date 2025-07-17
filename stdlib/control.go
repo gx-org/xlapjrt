@@ -25,7 +25,6 @@ import (
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
-	pjrtgraph "github.com/gx-org/xlapjrt/backend/graph"
 )
 
 func toNodes(ctx ir.Evaluator, elts ...ir.Element) ([]ops.Node, []*shape.Shape, error) {
@@ -55,7 +54,7 @@ func toStruct(ctx evaluator.Context, exprAt elements.ExprAt, tpl ops.Tuple, shap
 			Stor: field.Storage(),
 		}
 	}
-	els, err := grapheval.ElementsFromTupleNode(ctx.Evaluator().ArrayOps().Graph(), exprAt.File(), exprAt.Node(), tpl, fieldExprs, shapes)
+	els, err := grapheval.ElementsFromTupleNode(exprAt.File(), tpl, fieldExprs, shapes)
 	if err != nil {
 		return nil, err
 	}
@@ -82,52 +81,20 @@ func packXLATuple(ctx evaluator.Context, elts []ir.Element) (ops.OutputNode, err
 	return ops.OutputNode{Node: tupleNode, Shape: &shape.Shape{DType: dtype.Invalid}}, nil
 }
 
-func buildSubgraph(ectx evaluator.Context, call elements.CallAt, fn ir.Func, tupleShapes []*shape.Shape, structTyp *ir.StructType, resultHandler func(evaluator.Context, []ir.Element) (ops.OutputNode, error)) (*ops.Subgraph, error) {
-	ctx := ectx.(*interp.FileScope)
-	g := pjrtGraph(ctx)
-	subgraph, err := g.Core().Subgraph(fn.Name())
-	if err != nil {
-		return nil, err
-	}
-	core := subgraph.Core().(*pjrtgraph.Graph)
-	fnState, err := core.TupleArgument("_", 0, tupleShapes)
-	if err != nil {
-		return nil, err
-	}
-
-	stateStruct, err := toStruct(ctx, call.ToExprAt(), fnState, tupleShapes, structTyp)
-	if err != nil {
-		return nil, err
-	}
-	evaluator := ctx.Evaluator().(*grapheval.Evaluator)
-	subeval := grapheval.New(evaluator.Importer(), nil, subgraph)
-	resultElt, err := ctx.EvalFunctionToElement(subeval, fn, []ir.Element{stateStruct})
-	if err != nil {
-		return nil, err
-	}
-	output, err := resultHandler(ectx, resultElt)
-	if err != nil {
-		return nil, err
-	}
-	return &ops.Subgraph{Graph: subgraph, Result: output}, nil
-}
-
 func evalWhile(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	g := pjrtGraph(ctx)
 
-	stateStruct := (args[0]).(*interp.Struct)
+	stateStruct := interp.Underlying(args[0]).(*interp.Struct)
 	stateNodes, stateShapes, err := toNodes(ctx, stateStruct)
 	if err != nil {
 		return nil, err
 	}
 
-	cond := args[1].(interp.Func)
-	body := args[2].(interp.Func)
-	condSG, err := buildSubgraph(ctx, call, cond.Func(), stateShapes, stateStruct.StructType(), getOutputNode)
+	cond, err := grapheval.GraphFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
-	bodySG, err := buildSubgraph(ctx, call, body.Func(), stateShapes, stateStruct.StructType(), packXLATuple)
+	body, err := grapheval.GraphFromElement(args[2])
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +103,7 @@ func evalWhile(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFu
 	if err != nil {
 		return nil, err
 	}
-	fnState, err := g.While(*condSG, *bodySG, stateTpl)
+	fnState, err := g.While(cond, body, stateTpl)
 	if err != nil {
 		return nil, err
 	}
