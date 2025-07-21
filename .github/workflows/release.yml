@@ -57,7 +57,9 @@ jobs:
         git clone https://github.com/gx-org/gx.git
 
     - name: Install gomlx
-      run: curl -sSf https://raw.githubusercontent.com/gomlx/gopjrt/main/cmd/install_linux_amd64.sh | bash
+      run: |
+        mkdir $GOPJRT_INSTALL_DIR
+        curl -sSf https://raw.githubusercontent.com/gomlx/gopjrt/main/cmd/install_linux_amd64.sh | bash
 
     - name: Update all the dependencies to the latest release
       run: |
