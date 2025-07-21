@@ -74,6 +74,9 @@ jobs:
     - name: Commit changes if required
       run: git diff --quiet && git diff --staged --quiet || git commit -am 'Update dependencies.'
 
+    - name: Checking status for debugging.
+      run: git status
+
     - name: Push to origin
       run: git push
       env:
