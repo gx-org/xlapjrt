@@ -21,8 +21,8 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 	xlagraph "github.com/gx-org/xlapjrt/backend/graph"
 )
 
@@ -44,7 +44,7 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 		return nil, err
 	}
 	evaluator := ctx.Evaluator()
-	stateNode, _, err := grapheval.NodeFromElement(ctx, field)
+	stateNode, _, err := materialise.Element(ctx.Materialiser(), field)
 	if err != nil {
 		return nil, err
 	}
@@ -59,30 +59,34 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 		return nil, err
 	}
 
-	stateArrayAt := elements.NewExprAt(call.File(), &ir.ValueRef{
-		Stor: stateArray.Storage(),
-	})
-	philoxStateElement, err := grapheval.ElementFromNode(stateArrayAt, &ops.OutputNode{
-		Node:  newState,
-		Shape: philoxStateShape,
-	})
+	philoxStateElement, err := ctx.Materialiser().ElementsFromNodes(
+		call.File(),
+		&ir.ValueRef{
+			Stor: stateArray.Storage(),
+		},
+		&ops.OutputNode{
+			Node:  newState,
+			Shape: philoxStateShape,
+		})
 	if err != nil {
 		return nil, err
 	}
-	randValueAt := elements.NewExprAt(call.File(), call.Node().ExprFromResult(1))
-	valuesElement, err := grapheval.ElementFromNode(randValueAt, &ops.OutputNode{
-		Node:  values,
-		Shape: targetShape,
-	})
+	valuesElement, err := ctx.Materialiser().ElementsFromNodes(
+		call.File(),
+		call.Node().ExprFromResult(1),
+		&ops.OutputNode{
+			Node:  values,
+			Shape: targetShape,
+		})
 	if err != nil {
 		return nil, err
 	}
 	return []ir.Element{
 		interp.NewNamedType(fitp.NewFunc, philox.NamedType(), interp.NewStruct(
 			philoxStruct,
-			map[string]ir.Element{"state": philoxStateElement},
+			map[string]ir.Element{"state": philoxStateElement[0]},
 		)),
-		valuesElement,
+		valuesElement[0],
 	}, nil
 }
 

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/gomlx/gopjrt/dtypes/bfloat16"
@@ -29,6 +30,7 @@ import (
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
+	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/ir"
 	pjrtplatform "github.com/gx-org/xlapjrt/backend/platform"
 	pjrtgx "github.com/gx-org/xlapjrt"
@@ -42,6 +44,7 @@ type (
 		builder    *xlabuilder.XlaBuilder
 		executable *pjrt.LoadedExecutable
 
+		in     []*Node
 		out    []*shape.Shape
 		traced []*shape.Shape
 	}
@@ -134,6 +137,9 @@ func (g *Graph) Executable() *pjrt.LoadedExecutable {
 type Node struct {
 	graph *Graph
 	op    *xlabuilder.Op
+
+	info string
+	deps []ops.Node // Only used for debugging.
 }
 
 var _ pjrtNode = (*Node)(nil)
@@ -150,8 +156,14 @@ func (g *Graph) xlaHandles(inputs []ops.Node) ([]*xlabuilder.Op, error) {
 	return hdls, nil
 }
 
-func (g *Graph) newNode(op *xlabuilder.Op) *Node {
-	return &Node{graph: g, op: op}
+func (g *Graph) newNode(op *xlabuilder.Op, deps ...ops.Node) *Node {
+	return &Node{graph: g, op: op, deps: deps}
+}
+
+// Info sets some debugging information about the node.
+func (n *Node) Info(format string, a ...any) *Node {
+	n.info = fmt.Sprintf(format, a...)
+	return n
 }
 
 // Graph to which the node belongs to.
@@ -178,7 +190,20 @@ func (n *Node) xlaOp() *xlabuilder.Op {
 }
 
 func (n *Node) String() string {
-	return n.op.Type.String()
+	bld := strings.Builder{}
+	bld.WriteString(n.op.Type.String())
+	if len(n.info) > 0 {
+		bld.WriteString(":" + n.info)
+	}
+	if len(n.deps) == 0 {
+		return bld.String() + "\n"
+	}
+	bld.WriteString("{\n")
+	for _, dep := range n.deps {
+		bld.WriteString(gxfmt.Indent(fmt.Sprint(dep)))
+	}
+	bld.WriteString("}\n")
+	return bld.String()
 }
 
 func newLiteral[T dtypes.Supported](data []T, dims []int) (*xlabuilder.Literal, error) {
@@ -231,7 +256,9 @@ func (g *Graph) Argument(name string, shape *shape.Shape, index int) (ops.Node, 
 	if err != nil {
 		return nil, err
 	}
-	return g.newNode(xlaOp), nil
+	arg := g.newNode(xlaOp).Info("%s:%d", name, index)
+	g.in = append(g.in, arg)
+	return arg, nil
 }
 
 // TupleArgument returns a node representing a tuple parameter of a function.
@@ -253,7 +280,7 @@ func (g *Graph) UnaryFunc(x ops.Node, f func(*xlabuilder.Op) (*xlabuilder.Op, er
 	if err != nil {
 		return nil, err
 	}
-	return g.newNode(result), nil
+	return g.newNode(result, x), nil
 }
 
 // BinaryFunc returns a node executing a binary function. f must be an xlabuilder function pointer.
@@ -262,7 +289,7 @@ func (g *Graph) BinaryFunc(x ops.Node, y ops.Node, f func(x *xlabuilder.Op, y *x
 	if err != nil {
 		return nil, err
 	}
-	return g.newNode(result), nil
+	return g.newNode(result, x, y), nil
 }
 
 // ReduceFunc returns a node executing a basic reduction. f must be an xlabuilder function pointer.
@@ -352,7 +379,7 @@ func (g *Graph) Binary(op *ast.BinaryExpr, x, y ops.Node) (ops.Node, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%v error: %w", g, err)
 	}
-	return g.newNode(xlaOp), nil
+	return g.newNode(xlaOp, x, y), nil
 }
 
 // Reshape returns a reshape operator node.
@@ -430,7 +457,7 @@ func (g *Graph) Tuple(nodes []ops.Node) (ops.Tuple, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &tuple{g.newNode(xlaOp)}, nil
+	return &tuple{g.newNode(xlaOp, nodes...)}, nil
 }
 
 // ToXLATuple casts a generic Node to a graph.Tuple node.
@@ -617,11 +644,11 @@ func (g *Graph) Call(sg *ops.Subgraph, args ...ops.Node) (ops.Node, error) {
 		return nil, err
 	}
 
-	xlaOp, err := xlabuilder.Call(g.builder, subcomp, argOps...)
+	xlaOp, err := xlabuilder.Call(g.builder, subcomp.comp, argOps...)
 	if err != nil {
 		return nil, err
 	}
-	var result ops.Node = g.newNode(xlaOp)
+	var result ops.Node = g.newNode(xlaOp, subcomp)
 	if _, ok := sg.Result.Node.(ops.Tuple); ok {
 		// If the result node was a tuple, the subgraph's return value will also be a tuple.
 		result = ToXLATuple(result)
@@ -631,9 +658,11 @@ func (g *Graph) Call(sg *ops.Subgraph, args ...ops.Node) (ops.Node, error) {
 
 // Subgraph returns a Graph instance that maps to a new subgraph.
 func (g *Graph) Subgraph(name string) (ops.Graph, error) {
+	subName := g.funcName + "." + name
 	return &Graph{
-		plat:    g.plat,
-		builder: g.builder.CreateSubBuilder(name),
+		plat:     g.plat,
+		builder:  g.builder.CreateSubBuilder(subName),
+		funcName: subName,
 	}, nil
 }
 
@@ -647,9 +676,37 @@ func (g *Graph) RngBitGenerator(state ops.Node, shape *shape.Shape) (ops.Node, o
 	return g.newNode(newState), g.newNode(values), nil
 }
 
-func (g *Graph) xlaSubcomputation(sg *ops.Subgraph) (*xlabuilder.XlaComputation, error) {
+type subGraph struct {
+	out   ops.Node
+	comp  *xlabuilder.XlaComputation
+	graph *Graph
+}
+
+func (g *Graph) xlaSubcomputation(sg *ops.Subgraph) (*subGraph, error) {
 	pjrtsg := sg.Graph.(*Graph)
-	return pjrtsg.builder.Build(pjrtsg.xlaHandle(sg.Result.Node))
+	op := sg.Result.Node
+	sub := &subGraph{graph: pjrtsg, out: op}
+	var err error
+	sub.comp, err = pjrtsg.builder.Build(g.xlaHandle(op))
+	if err != nil {
+		return nil, errors.Errorf("cannot build a subgraph: %v\nSubgraph:\n%s", err, sub.String())
+	}
+	return sub, nil
+}
+
+func (sub *subGraph) Graph() ops.Graph {
+	return sub.graph
+}
+
+func (sub *subGraph) String() string {
+	bld := strings.Builder{}
+	bld.WriteString(fmt.Sprintf("SUBGRAPH(%s){\n", sub.graph.builder.Name()))
+	for i, arg := range sub.graph.in {
+		bld.WriteString(gxfmt.Indent(fmt.Sprintf("%d->%s", i, arg)))
+	}
+	bld.WriteString(gxfmt.Indent(fmt.Sprint(sub.out)))
+	bld.WriteString("}\n")
+	return bld.String()
 }
 
 // While returns a while loop node.
@@ -663,11 +720,11 @@ func (g *Graph) While(cond, body *ops.Subgraph, state ops.Node) (ops.Node, error
 		return nil, err
 	}
 
-	xlaOp, err := xlabuilder.While(g.xlaHandle(state), condSG, bodySG)
+	xlaOp, err := xlabuilder.While(g.xlaHandle(state), condSG.comp, bodySG.comp)
 	if err != nil {
 		return nil, err
 	}
-	var result ops.Node = g.newNode(xlaOp)
+	var result ops.Node = g.newNode(xlaOp, condSG, bodySG)
 	if _, ok := state.(ops.Tuple); ok {
 		result = ToXLATuple(result)
 	}

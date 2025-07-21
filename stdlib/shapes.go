@@ -23,8 +23,8 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 func evalConcat(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
@@ -32,7 +32,7 @@ func evalConcat(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	xShapes := make([]*shape.Shape, len(args)-1)
 	for i, arg := range args[1:] {
 		var err error
-		xs[i], xShapes[i], err = grapheval.NodeFromElement(ctx, arg)
+		xs[i], xShapes[i], err = materialise.Element(ctx.Materialiser(), arg)
 		if err != nil {
 			return nil, err
 		}
@@ -45,7 +45,7 @@ func evalConcat(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
+	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       xShapes[0].DType,
@@ -72,7 +72,7 @@ func evalLen(ctx evaluator.Context, call elements.CallAt, _ interp.Func, _ *ir.F
 }
 
 func evalSplit(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	node, firstArgShape, err := grapheval.NodeFromElement(ctx, args[1])
+	node, firstArgShape, err := materialise.Element(ctx.Materialiser(), args[1])
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func evalSplit(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFu
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
+	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       firstArgShape.DType,
@@ -141,11 +141,11 @@ func evalGather(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 		offsetDims[ii] = outputSubRank + ii
 	}
 
-	x, xShape, err := grapheval.NodeFromElement(ctx, args[0])
+	x, xShape, err := materialise.Element(ctx.Materialiser(), args[0])
 	if err != nil {
 		return nil, err
 	}
-	indicesNode, _, err := grapheval.NodeFromElement(ctx, args[1])
+	indicesNode, _, err := materialise.Element(ctx.Materialiser(), args[1])
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func evalGather(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
+	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       xShape.DType,

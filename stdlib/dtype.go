@@ -22,12 +22,12 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 func evalReinterpret(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	argNode, _, err := grapheval.NodeFromElement(ctx, args[0])
+	argNode, _, err := materialise.Element(ctx.Materialiser(), args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func evalReinterpret(ctx evaluator.Context, call elements.CallAt, fn interp.Func
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
+	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       dtype,

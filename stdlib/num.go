@@ -24,13 +24,13 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 )
 
 func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) interp.FuncBuiltin {
 	return func(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-		x, xShape, err := grapheval.NodeFromElement(ctx, args[0])
+		x, xShape, err := materialise.Element(ctx.Materialiser(), args[0])
 		if err != nil {
 			return nil, err
 		}
@@ -47,7 +47,7 @@ func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) in
 		if err != nil {
 			return nil, err
 		}
-		return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
+		return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 			Node: resultNode,
 			Shape: &shape.Shape{
 				DType:       xShape.DType,
@@ -58,7 +58,7 @@ func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) in
 }
 
 func evalTranspose(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	argNode, argShape, err := grapheval.NodeFromElement(ctx, args[0])
+	argNode, argShape, err := materialise.Element(ctx.Materialiser(), args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -79,14 +79,14 @@ func evalTranspose(ctx evaluator.Context, call elements.CallAt, fn interp.Func, 
 		DType:       argShape.DType,
 		AxisLengths: targetLengths,
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
+	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
 	})
 }
 
 func evalEinsum(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	left, leftShape, err := grapheval.NodeFromElement(ctx, args[0])
+	left, leftShape, err := materialise.Element(ctx.Materialiser(), args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func evalEinsum(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	if err != nil {
 		return nil, err
 	}
-	right, rightShape, err := grapheval.NodeFromElement(ctx, args[3])
+	right, rightShape, err := materialise.Element(ctx.Materialiser(), args[3])
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func evalEinsum(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	if err != nil {
 		return nil, fmt.Errorf("\nlhsContractingAxes: %v\nlhsBatchAxes: %v\nrhsContractingAxes: %v\nrhsBatchAxes: %v\nleft: %v\nright: %v", lhsContractingAxes, lhsBatchAxes, rhsContractingAxes, rhsBatchAxes, leftShape, rightShape)
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
+	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       leftShape.DType,
@@ -143,14 +143,14 @@ func evalIota(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFun
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
+	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
 	})
 }
 
 func evalArgmax(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	argNode, _, err := grapheval.NodeFromElement(ctx, args[0])
+	argNode, _, err := materialise.Element(ctx.Materialiser(), args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func evalArgmax(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	if err != nil {
 		return nil, err
 	}
-	return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
+	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       ir.DefaultIntKind.DType(),

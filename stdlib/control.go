@@ -15,35 +15,16 @@
 package stdlib
 
 import (
-	"github.com/pkg/errors"
 	"github.com/gx-org/backend/dtype"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 )
-
-func toNodes(ctx ir.Evaluator, elts ...ir.Element) ([]ops.Node, []*shape.Shape, error) {
-	elts, err := flatten.Flatten(elts...)
-	if err != nil {
-		return nil, nil, err
-	}
-	outputs, err := grapheval.MaterialiseAll(ctx, elts)
-	if err != nil {
-		return nil, nil, err
-	}
-	result := make([]ops.Node, len(outputs))
-	shapes := make([]*shape.Shape, len(outputs))
-	for i, output := range outputs {
-		result[i] = output.Node
-		shapes[i] = output.Shape
-	}
-	return result, shapes, nil
-}
 
 func toStruct(ctx evaluator.Context, exprAt elements.ExprAt, tpl ops.Tuple, shapes []*shape.Shape, structTyp *ir.StructType) (*interp.Struct, error) {
 	// Construct dummy expressions for all the fields of the structure to keep track of the value types.
@@ -54,23 +35,16 @@ func toStruct(ctx evaluator.Context, exprAt elements.ExprAt, tpl ops.Tuple, shap
 			Stor: field.Storage(),
 		}
 	}
-	els, err := grapheval.ElementsFromTupleNode(exprAt.File(), tpl, fieldExprs, shapes)
+	ev := ctx.Evaluator().(*grapheval.Evaluator)
+	els, err := ev.ElementsFromTupleNode(exprAt.File(), tpl, fieldExprs, shapes)
 	if err != nil {
 		return nil, err
 	}
 	return interp.NewStructFromElements(structTyp, els), nil
 }
 
-func getOutputNode(ctx evaluator.Context, elts []ir.Element) (ops.OutputNode, error) {
-	if len(elts) != 1 {
-		return ops.OutputNode{}, errors.Errorf("cannot get the output node of %d element(s)", len(elts))
-	}
-	node, shape, err := grapheval.NodeFromElement(ctx, elts[0])
-	return ops.OutputNode{Node: node, Shape: shape}, err
-}
-
 func packXLATuple(ctx evaluator.Context, elts []ir.Element) (ops.OutputNode, error) {
-	outputNodes, _, err := toNodes(ctx, elts...)
+	outputNodes, _, err := materialise.Flatten(ctx.Materialiser(), elts...)
 	if err != nil {
 		return ops.OutputNode{}, err
 	}
@@ -85,16 +59,16 @@ func evalWhile(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFu
 	g := pjrtGraph(ctx)
 
 	stateStruct := interp.Underlying(args[0]).(*interp.Struct)
-	stateNodes, stateShapes, err := toNodes(ctx, stateStruct)
+	stateNodes, stateShapes, err := materialise.Flatten(ctx.Materialiser(), stateStruct)
 	if err != nil {
 		return nil, err
 	}
 
-	cond, err := grapheval.GraphFromElement(args[1])
+	cond, err := grapheval.GraphFromElement("while.cond", args[1])
 	if err != nil {
 		return nil, err
 	}
-	body, err := grapheval.GraphFromElement(args[2])
+	body, err := grapheval.GraphFromElement("while.body", args[2])
 	if err != nil {
 		return nil, err
 	}
