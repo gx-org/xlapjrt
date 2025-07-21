@@ -51,11 +51,6 @@ jobs:
     - name: Install C++ dependencies
       run: sudo apt install -y libabsl-dev
 
-    - name: Update all the dependencies to the latest release
-      run: |
-        go list -m -u all | grep "gx-org" | awk '{print $1}' | xargs -n 1 go get -u
-        go mod tidy
-
     - name: Checkout GX to access cgx header files.
       run: |
         cd ..
@@ -64,6 +59,11 @@ jobs:
     - name: Install gomlx
       run: curl -sSf https://raw.githubusercontent.com/gomlx/gopjrt/main/cmd/install_linux_amd64.sh | bash
 
+    - name: Update all the dependencies to the latest release
+      run: |
+        export DEPS=$(go list -m -u all | grep "gx-org" | grep "\[v")
+        [ "$DEPS" != "" ] && go list -m -u all | grep "gx-org" | grep "\[v" | awk '{print $1}' | xargs -n 1 go get -u
+        go mod tidy
 
     - name: Run all the tests
       run: go test ./...
