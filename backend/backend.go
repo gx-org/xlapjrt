@@ -53,7 +53,7 @@ func (b *pBackend) Builder() *builder.Builder {
 }
 
 // NewGraph returns a new XLA computation graph.
-func (b *pBackend) NewOps(funcName string) ops.Graph {
+func (b *pBackend) NewOps(funcName string) (ops.Graph, error) {
 	return pjrtgraph.New(b.plat, funcName, nil)
 }
 

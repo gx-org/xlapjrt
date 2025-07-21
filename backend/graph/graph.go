@@ -39,8 +39,7 @@ import (
 type (
 	// Graph is the PJRT compute graph.
 	Graph struct {
-		funcName string
-		shapes   *shape.Shape
+		inputs *tuple
 
 		plat       *pjrtplatform.Platform
 		builder    *xlabuilder.XlaBuilder
@@ -65,12 +64,49 @@ var (
 )
 
 // New returns a new graph.
-func New(plat *pjrtplatform.Platform, funcName string, shapes []*shape.Shape) ops.Graph {
-	return &Graph{
-		plat:     plat,
-		builder:  xlabuilder.New(funcName),
-		funcName: funcName,
+func New(plat *pjrtplatform.Platform, funcName string, shapes []*shape.Shape) (ops.Graph, error) {
+	return newGraph(plat, shapes, xlabuilder.New(funcName))
+}
+
+func newGraph(plat *pjrtplatform.Platform, shapes []*shape.Shape, builder *xlabuilder.XlaBuilder) (ops.Graph, error) {
+	g := &Graph{
+		plat:    plat,
+		builder: builder,
 	}
+	var err error
+	g.inputs, err = g.buildTupleArgument(shapes)
+	if err != nil {
+		return nil, err
+	}
+	return g, nil
+}
+
+func (g *Graph) buildTupleArgument(shapes []*shape.Shape) (*tuple, error) {
+	if len(shapes) == 0 {
+		return nil, nil
+	}
+	xlaShape := make([]xlabuilder.Shape, 0, len(shapes))
+	for _, shape := range shapes {
+		xlaShape = append(xlaShape, pjrtgx.ToShape(shape))
+	}
+	const argTuple = "argtuple"
+	xlaOp, err := xlabuilder.Parameter(g.builder, argTuple, 0, xlabuilder.Shape{TupleShapes: xlaShape})
+	if err != nil {
+		return nil, err
+	}
+	return &tuple{Node: g.newNode(xlaOp).Info(argTuple)}, nil
+}
+
+func (g *Graph) tupleArgument(got *shape.Shape, name string, index int) (ops.Node, error) {
+	op, err := g.inputs.element(index)
+	if err != nil {
+		return nil, err
+	}
+	want := op.BackendShape()
+	if !got.Equal(want) {
+		return nil, errors.Errorf("cannot create argument %d:%s: got shape %s but want %s", index, name, got, want)
+	}
+	return op.Info("[%s]", name), nil
 }
 
 func unpackOutput(outs []*ops.OutputNode) ([]ops.Node, []*shape.Shape) {
@@ -96,11 +132,11 @@ func (g *Graph) Compile(dev platform.Device, out, traced []*ops.OutputNode, para
 	}
 	computation, err := g.builder.Build(g.xlaHandle(allTuple))
 	if err != nil {
-		return nil, errors.Errorf("cannot compile graph node %T for function %s: %v", all, g.funcName, err)
+		return nil, errors.Errorf("cannot compile graph node %T for function %s: %v", all, g.builder.Name(), err)
 	}
 	g.executable, err = g.plat.Client().Compile().WithComputation(computation).Done()
 	if err != nil {
-		return nil, errors.Errorf("cannot compile graph node %T for function %s: %v", all, g.funcName, err)
+		return nil, errors.Errorf("cannot compile graph node %T for function %s: %v", all, g.builder.Name(), err)
 	}
 	return g.newNodeRunner(dev.(*pjrtplatform.Device)), nil
 }
@@ -253,7 +289,10 @@ func (g *Graph) Constant(buffer platform.HostBuffer) (ops.Node, error) {
 }
 
 // Argument returns a node set by a caller when calling the function.
-func (g *Graph) Argument(name string, shape *shape.Shape, index int) (ops.Node, error) {
+func (g *Graph) Argument(name string, shape *shape.Shape, index int) (node ops.Node, err error) {
+	if g.inputs != nil {
+		return g.tupleArgument(shape, name, index)
+	}
 	xlaOp, err := xlabuilder.Parameter(g.builder, name, index, pjrtgx.ToShape(shape))
 	if err != nil {
 		return nil, err
@@ -261,19 +300,6 @@ func (g *Graph) Argument(name string, shape *shape.Shape, index int) (ops.Node, 
 	arg := g.newNode(xlaOp).Info("%s:%d", name, index)
 	g.in = append(g.in, arg)
 	return arg, nil
-}
-
-// TupleArgument returns a node representing a tuple parameter of a function.
-func (g *Graph) TupleArgument(name string, index int, shapes []*shape.Shape) (ops.Tuple, error) {
-	xlaShape := make([]xlabuilder.Shape, 0, len(shapes))
-	for _, shape := range shapes {
-		xlaShape = append(xlaShape, pjrtgx.ToShape(shape))
-	}
-	xlaOp, err := xlabuilder.Parameter(g.builder, name, index, xlabuilder.Shape{TupleShapes: xlaShape})
-	if err != nil {
-		return nil, err
-	}
-	return &tuple{Node: g.newNode(xlaOp)}, nil
 }
 
 // UnaryFunc returns a node executing a unary function. f must be an xlabuilder function pointer.
@@ -424,12 +450,17 @@ type tuple struct {
 }
 
 // Element returns a Node representing the ith element of the tuple.
-func (n *tuple) Element(i int) (ops.Node, error) {
+func (n *tuple) element(i int) (*Node, error) {
 	xlaOp, err := xlabuilder.GetTupleElement(n.graph.xlaHandle(n.Node), i)
 	if err != nil {
 		return nil, err
 	}
-	return n.graph.newNode(xlaOp), nil
+	return n.graph.newNode(xlaOp).Info("%s[%d]", n.info, i), nil
+}
+
+// Element returns a Node representing the ith element of the tuple.
+func (n *tuple) Element(i int) (ops.Node, error) {
+	return n.element(i)
 }
 
 func (n *tuple) Size() int {
@@ -659,13 +690,10 @@ func (g *Graph) Call(sg *ops.Subgraph, args ...ops.Node) (ops.Node, error) {
 }
 
 // Subgraph returns a Graph instance that maps to a new subgraph.
-func (g *Graph) Subgraph(name string, args []*shape.Shape) (ops.Graph, error) {
-	subName := g.funcName + "." + name
-	return &Graph{
-		plat:     g.plat,
-		builder:  g.builder.CreateSubBuilder(subName),
-		funcName: subName,
-	}, nil
+func (g *Graph) Subgraph(name string, inputs []*shape.Shape) (ops.Graph, error) {
+	subName := g.builder.Name() + "." + name
+	builder := g.builder.CreateSubBuilder(subName)
+	return newGraph(g.plat, inputs, builder)
 }
 
 // RngBitGenerator takes RNG state and generates the given shape filled with random values, and
