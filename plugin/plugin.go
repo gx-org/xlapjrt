@@ -31,7 +31,7 @@ import (
 
 // New returns a new PJRT runtime given a plugin name.
 func New(name string) (*api.Runtime, error) {
-	localImporter, err := localfs.New()
+	localImporter, err := localfs.New("")
 	if err != nil {
 		return nil, err
 	}

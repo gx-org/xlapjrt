@@ -24,8 +24,8 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp/grapheval"
 	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/impl"
 	pjrtgraph "github.com/gx-org/xlapjrt/backend/graph"
 )
@@ -82,7 +82,7 @@ func xlaUnaryFunc(f func(*xlabuilder.Op) (*xlabuilder.Op, error)) interp.FuncBui
 		if len(args) != 1 {
 			return nil, fmt.Errorf("unary function expects 1 argument, got %d", len(args))
 		}
-		x, xShape, err := grapheval.NodeFromElement(ctx, args[0])
+		x, xShape, err := materialise.Element(ctx.Materialiser(), args[0])
 		if err != nil {
 			return nil, err
 		}
@@ -90,7 +90,7 @@ func xlaUnaryFunc(f func(*xlabuilder.Op) (*xlabuilder.Op, error)) interp.FuncBui
 		if err != nil {
 			return nil, err
 		}
-		return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
+		return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 			Node:  node,
 			Shape: xShape,
 		})
@@ -131,11 +131,11 @@ func xlaBinaryFunc(f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, e
 		if len(args) != 2 {
 			return nil, fmt.Errorf("binary function expects 2 arguments, got %d", len(args))
 		}
-		x, xShape, err := grapheval.NodeFromElement(ctx, args[0])
+		x, xShape, err := materialise.Element(ctx.Materialiser(), args[0])
 		if err != nil {
 			return nil, err
 		}
-		y, yShape, err := grapheval.NodeFromElement(ctx, args[1])
+		y, yShape, err := materialise.Element(ctx.Materialiser(), args[1])
 		if err != nil {
 			return nil, err
 		}
@@ -144,7 +144,7 @@ func xlaBinaryFunc(f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, e
 			return nil, err
 		}
 		outShape := shapeF(xShape, yShape)
-		return grapheval.ElementsFromNode(call.ToExprAt(), &ops.OutputNode{
+		return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 			Node:  node,
 			Shape: outShape,
 		})

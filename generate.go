@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package xlapjrt sets up the dependency to the GX tools.
 package xlapjrt
 
 //go:generate go tool packager --gx_package_module=github.com/gx-org/xlapjrt/gx
