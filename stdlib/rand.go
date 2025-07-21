@@ -62,6 +62,7 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	philoxStateElement, err := ctx.Materialiser().ElementsFromNodes(
 		call.File(),
 		&ir.ValueRef{
+			Src:  stateArray.Name,
 			Stor: stateArray.Storage(),
 		},
 		&ops.OutputNode{
