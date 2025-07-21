@@ -54,7 +54,7 @@ func (b *pBackend) Builder() *builder.Builder {
 
 // NewGraph returns a new XLA computation graph.
 func (b *pBackend) NewOps(funcName string) ops.Graph {
-	return pjrtgraph.New(b.plat, funcName)
+	return pjrtgraph.New(b.plat, funcName, nil)
 }
 
 // Client returns the PJRT client of the backend.

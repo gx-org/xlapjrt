@@ -39,7 +39,9 @@ import (
 type (
 	// Graph is the PJRT compute graph.
 	Graph struct {
-		funcName   string
+		funcName string
+		shapes   *shape.Shape
+
 		plat       *pjrtplatform.Platform
 		builder    *xlabuilder.XlaBuilder
 		executable *pjrt.LoadedExecutable
@@ -63,7 +65,7 @@ var (
 )
 
 // New returns a new graph.
-func New(plat *pjrtplatform.Platform, funcName string) ops.Graph {
+func New(plat *pjrtplatform.Platform, funcName string, shapes []*shape.Shape) ops.Graph {
 	return &Graph{
 		plat:     plat,
 		builder:  xlabuilder.New(funcName),
@@ -657,7 +659,7 @@ func (g *Graph) Call(sg *ops.Subgraph, args ...ops.Node) (ops.Node, error) {
 }
 
 // Subgraph returns a Graph instance that maps to a new subgraph.
-func (g *Graph) Subgraph(name string) (ops.Graph, error) {
+func (g *Graph) Subgraph(name string, args []*shape.Shape) (ops.Graph, error) {
 	subName := g.funcName + "." + name
 	return &Graph{
 		plat:     g.plat,
