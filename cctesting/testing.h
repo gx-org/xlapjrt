@@ -18,8 +18,8 @@
 #define THIRD_PARTY_GXLANG_XLAPJRT_TESTING_TESTING_H_
 
 #include <absl/status/statusor.h>
-#include <gx/golang/binder/ccgx/cppgx.h>
-#include <xlapjrt/testing/testing.cgo.h>
+#include <gxdeps/github.com/gx-org/gx/golang/binder/ccgx/cppgx.h>
+#include <gxdeps/github.com/gx-org/xlapjrt/testing/testing.cgo.h>
 
 namespace gxlang {
 namespace cppgx {

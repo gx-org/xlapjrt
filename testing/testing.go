@@ -24,7 +24,7 @@ import (
 	pjrtstdlib "github.com/gx-org/xlapjrt/stdlib"
 )
 
-// #include <gx/golang/binder/cgx/cgx.h>
+// #include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/cgx.h>
 import "C"
 
 //export cgx_testing_runtime

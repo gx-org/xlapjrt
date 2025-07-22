@@ -24,7 +24,8 @@ import (
 	pjrtstdlib "github.com/gx-org/xlapjrt/stdlib"
 )
 
-// #include <gx/golang/binder/cgx/cgx.h>
+// #cgo CFLAGS: -I ..
+// #include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/cgx.h>
 import "C"
 
 //export cgx_builder_new_static_xlapjrt

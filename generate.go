@@ -14,4 +14,7 @@
 
 package xlapjrt
 
+//go:generate go tool ccgx link
 //go:generate go tool packager --gx_package_module=github.com/gx-org/xlapjrt/gx
+//go:generate go tool cgo -exportheader cgx/cgx.cgo.h cgx/cgx.go
+//go:generate go tool cgo -exportheader testing/testing.cgo.h testing/testing.go
