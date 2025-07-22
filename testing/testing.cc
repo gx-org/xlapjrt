@@ -15,8 +15,8 @@
 #include <xlapjrt/testing/testing.h>
 
 #include <absl/status/statusor.h>
+#include <gx/golang/binder/ccgx/cppgx.h>
 #include <gx/golang/binder/cgx/cgx.h>
-#include <gx/golang/binder/cgx/cppgx.h>
 
 namespace gxlang {
 namespace cppgx {
