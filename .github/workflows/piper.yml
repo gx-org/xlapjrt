@@ -60,11 +60,12 @@ jobs:
 
     - name: Install C++ dependencies
       run: sudo apt install -y libabsl-dev
-
+        
     - name: Install gomlx
       run: |
         mkdir $GOPJRT_INSTALL_DIR
-        curl -sSf https://raw.githubusercontent.com/gomlx/gopjrt/main/cmd/install_linux_amd64.sh | bash
+        curl -o $GOPJRT_INSTALL_DIR/install_linux_amd64.sh https://raw.githubusercontent.com/gomlx/gopjrt/main/cmd/install_linux_amd64.sh
+        bash $GOPJRT_INSTALL_DIR/install_linux_amd64.sh
 
     - name: Tidy (best effort)
       run: go mod tidy || true
