@@ -82,7 +82,9 @@ jobs:
         fi
 
     - name: Build
-      run: go build ./...
+      run: |
+        go tool ccgx link
+        go build ./...
 
     - name: Test the piper branch
       run: go test ./...
