@@ -24,9 +24,9 @@ on:
 env:
   GOPJRT_NOSUDO: true
   GOPJRT_INSTALL_DIR: ${{ github.workspace }}/../gopjrtbin
-  CGO_CFLAGS: -I${{ github.workspace }}/.. -I ${{ github.workspace }}/../gopjrtbin/include
-  CGO_CPPFLAGS: -I${{ github.workspace }}/.. -I $${{ github.workspace }}/../gopjrtbin/include
-  CGO_CXXFLAGS: -I${{ github.workspace }}/.. -I ${{ github.workspace }}/../gopjrtbin/include
+  CGO_CFLAGS: -I ${{ github.workspace }}/../gopjrtbin/include
+  CGO_CPPFLAGS: -I $${{ github.workspace }}/../gopjrtbin/include
+  CGO_CXXFLAGS: -I ${{ github.workspace }}/../gopjrtbin/include
   CGO_LDFLAGS: -labsl_status -labsl_statusor -L ${{ github.workspace }}/../gopjrtbin/lib -lgomlx_xlabuilder
   PJRT_PLUGIN_LIBRARY_PATH: ${{ github.workspace }}/../gopjrtbin/lib/gomlx/pjrt
   LD_LIBRARY_PATH: ${{ github.workspace }}/../gopjrtbin/lib 
@@ -67,14 +67,15 @@ jobs:
         curl -o $GOPJRT_INSTALL_DIR/install_linux_amd64.sh https://raw.githubusercontent.com/gomlx/gopjrt/main/cmd/install_linux_amd64.sh
         bash $GOPJRT_INSTALL_DIR/install_linux_amd64.sh
 
-    - name: Tidy (best effort)
-      run: go mod tidy || true
-
     - name: Generating code
       run: go generate ./...
 
-    - name: Tidy (required)
-      run: go mod tidy
+    - name: Update all the dependencies to the latest release
+      run: |
+        go mod tidy
+        export DEPS=$(go list -m -u all | grep "gx-org" | grep "\[v")
+        [ "$DEPS" != "" ] && go list -m -u all | grep "gx-org" | grep "\[v" | awk '{print $1}' | xargs -n 1 go get -u
+        go mod tidy
 
     - name: Commit generated and modified files
       run: |
