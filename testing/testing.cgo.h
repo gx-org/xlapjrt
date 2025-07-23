@@ -36,6 +36,7 @@ typedef struct { const char *p; ptrdiff_t n; } _GoString_;
 
 
 #line 27 "testing.go"
+
  #include <gxdeps/github.com/gx-org/gx/golang/binder/cgx/cgx.h>
 
 #line 1 "cgo-generated-wrapper"
