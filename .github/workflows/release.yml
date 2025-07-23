@@ -58,7 +58,9 @@ jobs:
         bash $GOPJRT_INSTALL_DIR/install_linux_amd64.sh 
 
     - name: Run all the tests
-      run: go test ./...
+      run: |
+        go tool ccgx link
+        go test ./...
 
     - name: Checking status for debugging.
       run: git status
