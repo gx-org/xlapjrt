@@ -12,7 +12,7 @@ require (
 require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/gx-org/ccgx v0.0.0-20250722230527-e10ff90544ab // indirect
+	github.com/gx-org/ccgx v0.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/cobra v1.9.1 // indirect
 	github.com/spf13/pflag v1.0.7 // indirect

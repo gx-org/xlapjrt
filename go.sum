@@ -11,6 +11,7 @@ github.com/gx-org/backend v0.3.0 h1:mOrwcJ+CaULmnRrrD3aqBo4lxl6BYX2T+alFcMjNkQI=
 github.com/gx-org/backend v0.3.0/go.mod h1:7/vxVrdZy+XCB2lXO+rCAhHrYlx3Byi6fivxAPVtRUE=
 github.com/gx-org/ccgx v0.0.0-20250722230527-e10ff90544ab h1:QTQnDFYlhmloMLXLedUEj1n9SH1cM6Zd/Udk01yLiqs=
 github.com/gx-org/ccgx v0.0.0-20250722230527-e10ff90544ab/go.mod h1:NTXeAwrI/UuCkvgojtkQodTvOhhbTnlgvWQGJ6hXpdc=
+github.com/gx-org/ccgx v0.1.0/go.mod h1:NTXeAwrI/UuCkvgojtkQodTvOhhbTnlgvWQGJ6hXpdc=
 github.com/gx-org/gx v0.3.3 h1:He//otvxdv0FyWCmWMMaX5i3oy584Kqo4lvm2zFpe9I=
 github.com/gx-org/gx v0.3.3/go.mod h1:ipmISLtb4u3KkWWC4s21zSu4EZsfB04KhPetUZSx4zQ=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
