@@ -730,7 +730,7 @@ func (sub *subGraph) Graph() ops.Graph {
 
 func (sub *subGraph) String() string {
 	bld := strings.Builder{}
-	bld.WriteString(fmt.Sprintf("SUBGRAPH(%s){\n", sub.graph.builder.Name()))
+	fmt.Fprintf(&bld, "SUBGRAPH(%s){\n", sub.graph.builder.Name())
 	for i, arg := range sub.graph.in {
 		bld.WriteString(gxfmt.Indent(fmt.Sprintf("%d->%s", i, arg)))
 	}
