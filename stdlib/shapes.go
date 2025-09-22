@@ -23,16 +23,18 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
+	"github.com/gx-org/gx/stdlib/builtin"
 )
 
-func evalConcat(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalConcat(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	mat := builtin.Materialiser(env)
 	xs := make([]ops.Node, len(args)-1)
 	xShapes := make([]*shape.Shape, len(args)-1)
 	for i, arg := range args[1:] {
 		var err error
-		xs[i], xShapes[i], err = materialise.Element(ctx.Materialiser(), arg)
+		xs[i], xShapes[i], err = materialise.Element(mat, arg)
 		if err != nil {
 			return nil, err
 		}
@@ -41,11 +43,11 @@ func evalConcat(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	if err != nil {
 		return nil, err
 	}
-	op, err := pjrtGraph(ctx).Concat(int(axis), xs)
+	op, err := pjrtGraph(env).Concat(int(axis), xs)
 	if err != nil {
 		return nil, err
 	}
-	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       xShapes[0].DType,
@@ -54,8 +56,8 @@ func evalConcat(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	})
 }
 
-func evalLen(ctx evaluator.Context, call elements.CallAt, _ interp.Func, _ *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	shape, err := interp.ShapeFromElement(args[0])
+func evalLen(env evaluator.Env, call elements.CallAt, _ fun.Func, _ *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	shape, err := elements.ShapeFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -64,15 +66,16 @@ func evalLen(ctx evaluator.Context, call elements.CallAt, _ interp.Func, _ *ir.F
 	if err != nil {
 		return nil, err
 	}
-	out, err := ctx.Evaluator().ElementFromAtom(ctx.File(), call.Node(), value)
+	out, err := env.Evaluator().ElementFromAtom(env.ExprEval().File(), call.Node(), value)
 	if err != nil {
 		return nil, err
 	}
 	return []ir.Element{out}, nil
 }
 
-func evalSplit(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	node, firstArgShape, err := materialise.Element(ctx.Materialiser(), args[1])
+func evalSplit(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	mat := builtin.Materialiser(env)
+	node, firstArgShape, err := materialise.Element(mat, args[1])
 	if err != nil {
 		return nil, err
 	}
@@ -84,11 +87,11 @@ func evalSplit(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFu
 	if err != nil {
 		return nil, err
 	}
-	op, err := pjrtGraph(ctx).Split(node, int(axis), int(numSplits))
+	op, err := pjrtGraph(env).Split(node, int(axis), int(numSplits))
 	if err != nil {
 		return nil, err
 	}
-	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       firstArgShape.DType,
@@ -97,12 +100,12 @@ func evalSplit(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFu
 	})
 }
 
-func evalGather(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	inputShape, err := interp.ShapeFromElement(args[0])
+func evalGather(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	inputShape, err := elements.ShapeFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
-	indicesShape, err := interp.ShapeFromElement(args[1])
+	indicesShape, err := elements.ShapeFromElement(args[1])
 	if err != nil {
 		return nil, err
 	}
@@ -141,19 +144,20 @@ func evalGather(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 		offsetDims[ii] = outputSubRank + ii
 	}
 
-	x, xShape, err := materialise.Element(ctx.Materialiser(), args[0])
+	mat := builtin.Materialiser(env)
+	x, xShape, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
-	indicesNode, _, err := materialise.Element(ctx.Materialiser(), args[1])
+	indicesNode, _, err := materialise.Element(mat, args[1])
 	if err != nil {
 		return nil, err
 	}
-	op, err := pjrtGraph(ctx).Gather(x, indicesNode, indexVectorDim, offsetDims, collapsedSliceDims, startIndexMap, sliceSizes, false)
+	op, err := pjrtGraph(env).Gather(x, indicesNode, indexVectorDim, offsetDims, collapsedSliceDims, startIndexMap, sliceSizes, false)
 	if err != nil {
 		return nil, err
 	}
-	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       xShape.DType,

@@ -21,8 +21,10 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
+	"github.com/gx-org/gx/stdlib/builtin"
 	xlagraph "github.com/gx-org/xlapjrt/backend/graph"
 )
 
@@ -31,8 +33,8 @@ var philoxStateShape = &shape.Shape{
 	AxisLengths: []int{3},
 }
 
-func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element, dtyp dtype.DataType) ([]ir.Element, error) {
-	fitp := ctx.(*interp.FileScope)
+func evalPhilox(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element, dtyp dtype.DataType) ([]ir.Element, error) {
+	mat := builtin.Materialiser(env)
 	philox := fn.Recv().Element
 	philoxStruct := ir.Underlying(philox.NamedType()).(*ir.StructType)
 	stateArray := philoxStruct.Fields.FindField("state")
@@ -43,8 +45,8 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	if err != nil {
 		return nil, err
 	}
-	evaluator := ctx.Evaluator()
-	stateNode, _, err := materialise.Element(ctx.Materialiser(), field)
+	evaluator := env.Evaluator()
+	stateNode, _, err := materialise.Element(mat, field)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +61,7 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 		return nil, err
 	}
 
-	philoxStateElement, err := ctx.Materialiser().ElementsFromNodes(
+	philoxStateElement, err := mat.ElementsFromNodes(
 		call.File(),
 		&ir.ValueRef{
 			Src:  stateArray.Name,
@@ -72,7 +74,7 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	if err != nil {
 		return nil, err
 	}
-	valuesElement, err := ctx.Materialiser().ElementsFromNodes(
+	valuesElement, err := mat.ElementsFromNodes(
 		call.File(),
 		call.Node().ExprFromResult(1),
 		&ops.OutputNode{
@@ -83,7 +85,7 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 		return nil, err
 	}
 	return []ir.Element{
-		interp.NewNamedType(fitp.NewFunc, philox.NamedType(), interp.NewStruct(
+		fun.NewNamedType(interp.NewRunFunc, philox.NamedType(), elements.NewStruct(
 			philoxStruct,
 			map[string]ir.Element{"state": philoxStateElement[0]},
 		)),
@@ -91,10 +93,10 @@ func evalPhilox(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	}, nil
 }
 
-func evalPhiloxUint32(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalPhiloxUint32(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	return evalPhilox(ctx, call, fn, irFunc, args, dtype.Uint32)
 }
 
-func evalPhiloxUint64(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalPhiloxUint64(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	return evalPhilox(ctx, call, fn, irFunc, args, dtype.Uint64)
 }

@@ -24,8 +24,10 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
+	"github.com/gx-org/gx/stdlib/builtin"
 	"github.com/gx-org/gx/stdlib/impl"
 	pjrtgraph "github.com/gx-org/xlapjrt/backend/graph"
 )
@@ -75,19 +77,20 @@ var Stdlib = &impl.Stdlib{
 }
 
 func xlaUnaryFunc(f func(*xlabuilder.Op) (*xlabuilder.Op, error)) interp.FuncBuiltin {
-	return func(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	return func(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("unary function expects 1 argument, got %d", len(args))
 		}
-		x, xShape, err := materialise.Element(ctx.Materialiser(), args[0])
+		mat := builtin.Materialiser(env)
+		x, xShape, err := materialise.Element(mat, args[0])
 		if err != nil {
 			return nil, err
 		}
-		node, err := pjrtGraph(ctx).UnaryFunc(x, f)
+		node, err := pjrtGraph(env).UnaryFunc(x, f)
 		if err != nil {
 			return nil, err
 		}
-		return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+		return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 			Node:  node,
 			Shape: xShape,
 		})
@@ -124,30 +127,31 @@ func matmulShape(x, y *shape.Shape) *shape.Shape {
 }
 
 func xlaBinaryFunc(f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, error), shapeF func(x, y *shape.Shape) *shape.Shape) interp.FuncBuiltin {
-	return func(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	return func(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+		mat := builtin.Materialiser(env)
 		if len(args) != 2 {
 			return nil, fmt.Errorf("binary function expects 2 arguments, got %d", len(args))
 		}
-		x, xShape, err := materialise.Element(ctx.Materialiser(), args[0])
+		x, xShape, err := materialise.Element(mat, args[0])
 		if err != nil {
 			return nil, err
 		}
-		y, yShape, err := materialise.Element(ctx.Materialiser(), args[1])
+		y, yShape, err := materialise.Element(mat, args[1])
 		if err != nil {
 			return nil, err
 		}
-		node, err := pjrtGraph(ctx).BinaryFunc(x, y, f)
+		node, err := pjrtGraph(env).BinaryFunc(x, y, f)
 		if err != nil {
 			return nil, err
 		}
 		outShape := shapeF(xShape, yShape)
-		return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+		return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 			Node:  node,
 			Shape: outShape,
 		})
 	}
 }
 
-func pjrtGraph(ctx evaluator.Context) *pjrtgraph.Graph {
+func pjrtGraph(ctx evaluator.Env) *pjrtgraph.Graph {
 	return ctx.Evaluator().ArrayOps().Graph().(*pjrtgraph.Graph)
 }

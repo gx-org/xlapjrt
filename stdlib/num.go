@@ -24,13 +24,16 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
+	"github.com/gx-org/gx/stdlib/builtin"
 )
 
 func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) interp.FuncBuiltin {
-	return func(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-		x, xShape, err := materialise.Element(ctx.Materialiser(), args[0])
+	return func(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+		mat := builtin.Materialiser(env)
+		x, xShape, err := materialise.Element(mat, args[0])
 		if err != nil {
 			return nil, err
 		}
@@ -43,11 +46,11 @@ func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) in
 			// specified, treat this as a no-op.
 			return []ir.Element{args[0]}, nil
 		}
-		resultNode, err := pjrtGraph(ctx).ReduceFunc(x, axes, f)
+		resultNode, err := pjrtGraph(env).ReduceFunc(x, axes, f)
 		if err != nil {
 			return nil, err
 		}
-		return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+		return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 			Node: resultNode,
 			Shape: &shape.Shape{
 				DType:       xShape.DType,
@@ -57,8 +60,9 @@ func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) in
 	}
 }
 
-func evalTranspose(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	argNode, argShape, err := materialise.Element(ctx.Materialiser(), args[0])
+func evalTranspose(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	mat := builtin.Materialiser(env)
+	argNode, argShape, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +73,7 @@ func evalTranspose(ctx evaluator.Context, call elements.CallAt, fn interp.Func, 
 	for i := range wantAxes {
 		wantAxes[i] = len(wantAxes) - i - 1
 	}
-	op, err := pjrtGraph(ctx).Transpose(argNode, wantAxes)
+	op, err := pjrtGraph(env).Transpose(argNode, wantAxes)
 	if err != nil {
 		return nil, err
 	}
@@ -79,14 +83,15 @@ func evalTranspose(ctx evaluator.Context, call elements.CallAt, fn interp.Func, 
 		DType:       argShape.DType,
 		AxisLengths: targetLengths,
 	}
-	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
 	})
 }
 
-func evalEinsum(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	left, leftShape, err := materialise.Element(ctx.Materialiser(), args[0])
+func evalEinsum(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	mat := builtin.Materialiser(env)
+	left, leftShape, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +103,7 @@ func evalEinsum(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	if err != nil {
 		return nil, err
 	}
-	right, rightShape, err := materialise.Element(ctx.Materialiser(), args[3])
+	right, rightShape, err := materialise.Element(mat, args[3])
 	if err != nil {
 		return nil, err
 	}
@@ -111,13 +116,13 @@ func evalEinsum(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 		return nil, err
 	}
 
-	op, err := pjrtGraph(ctx).DotGeneral(left, right,
+	op, err := pjrtGraph(env).DotGeneral(left, right,
 		[2][]int{lhsBatchAxes, rhsBatchAxes},
 		[2][]int{lhsContractingAxes, rhsContractingAxes})
 	if err != nil {
 		return nil, fmt.Errorf("\nlhsContractingAxes: %v\nlhsBatchAxes: %v\nrhsContractingAxes: %v\nrhsBatchAxes: %v\nleft: %v\nright: %v", lhsContractingAxes, lhsBatchAxes, rhsContractingAxes, rhsBatchAxes, leftShape, rightShape)
 	}
-	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       leftShape.DType,
@@ -126,7 +131,7 @@ func evalEinsum(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	})
 }
 
-func evalIota(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalIota(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	axes, err := elements.AxesFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -139,18 +144,19 @@ func evalIota(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFun
 		DType:       ir.DefaultIntKind.DType(),
 		AxisLengths: axes,
 	}
-	op, err := pjrtGraph(ctx).Iota(targetShape, axisIndex)
+	op, err := pjrtGraph(env).Iota(targetShape, axisIndex)
 	if err != nil {
 		return nil, err
 	}
-	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return builtin.Materialiser(env).ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
 	})
 }
 
-func evalArgmax(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	argNode, _, err := materialise.Element(ctx.Materialiser(), args[0])
+func evalArgmax(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	mat := builtin.Materialiser(env)
+	argNode, _, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -158,11 +164,11 @@ func evalArgmax(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irF
 	if err != nil {
 		return nil, err
 	}
-	op, err := pjrtGraph(ctx).ArgMinMax(argNode, int(axisIndex), ir.DefaultIntKind, false)
+	op, err := pjrtGraph(env).ArgMinMax(argNode, int(axisIndex), ir.DefaultIntKind, false)
 	if err != nil {
 		return nil, err
 	}
-	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       ir.DefaultIntKind.DType(),

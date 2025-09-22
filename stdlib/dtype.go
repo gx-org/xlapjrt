@@ -22,12 +22,14 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
-	"github.com/gx-org/gx/interp"
+	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
+	"github.com/gx-org/gx/stdlib/builtin"
 )
 
-func evalReinterpret(ctx evaluator.Context, call elements.CallAt, fn interp.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	argNode, _, err := materialise.Element(ctx.Materialiser(), args[0])
+func evalReinterpret(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	mat := builtin.Materialiser(env)
+	argNode, _, err := materialise.Element(mat, args[0])
 	if err != nil {
 		return nil, err
 	}
@@ -37,11 +39,11 @@ func evalReinterpret(ctx evaluator.Context, call elements.CallAt, fn interp.Func
 		return nil, fmt.Errorf("%T is not an array type", retType)
 	}
 	dtype := arrayType.DataType().Kind().DType()
-	op, err := pjrtGraph(ctx).Bitcast(argNode, dtype)
+	op, err := pjrtGraph(env).Bitcast(argNode, dtype)
 	if err != nil {
 		return nil, err
 	}
-	return ctx.Materialiser().ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       dtype,
