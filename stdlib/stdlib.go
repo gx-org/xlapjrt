@@ -32,9 +32,6 @@ import (
 
 // Stdlib is the PJRT implementation of the standard library.
 var Stdlib = &impl.Stdlib{
-	Control: impl.Control{
-		While: evalWhile,
-	},
 	Dtype: impl.Dtype{
 		Reinterpret: evalReinterpret,
 	},
