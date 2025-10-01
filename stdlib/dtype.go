@@ -33,7 +33,7 @@ func evalReinterpret(env evaluator.Env, call elements.CallAt, fn fun.Func, irFun
 	if err != nil {
 		return nil, err
 	}
-	retType := call.Node().Callee.T.Results.List[0].Type.Typ
+	retType := call.Node().Callee.FuncType().Results.List[0].Type.Typ
 	arrayType, ok := ir.Underlying(retType).(ir.ArrayType)
 	if !ok {
 		return nil, fmt.Errorf("%T is not an array type", retType)
