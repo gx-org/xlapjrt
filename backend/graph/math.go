@@ -24,6 +24,16 @@ func (g *Graph) Math() ops.MathBuilder {
 	return g
 }
 
+// Log returns the natural logarithm of x.
+func (g *Graph) Log(x ops.Node) (ops.Node, error) {
+	return g.UnaryFunc(x, xlabuilder.Log)
+}
+
+// Exp returns the computation for the exponential.
+func (g *Graph) Exp(x ops.Node) (ops.Node, error) {
+	return g.UnaryFunc(x, xlabuilder.Exp)
+}
+
 // Cos returns a node computing the cosine.
 func (g *Graph) Cos(x ops.Node) (ops.Node, error) {
 	return g.UnaryFunc(x, xlabuilder.Cos)
