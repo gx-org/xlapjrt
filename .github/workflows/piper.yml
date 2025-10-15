@@ -50,9 +50,6 @@ jobs:
     - name: Setup an identity
       run: git config user.email "noreply@github.com" && git config user.name "Github Action"
 
-    - name: Move to the latest version
-      run: go get -u 
-
     - name: Install C++ dependencies
       run: sudo apt install -y libabsl-dev
         
@@ -62,15 +59,13 @@ jobs:
         curl -o $GOPJRT_INSTALL_DIR/install_linux_amd64.sh https://raw.githubusercontent.com/gomlx/gopjrt/main/cmd/install_linux_amd64.sh
         bash $GOPJRT_INSTALL_DIR/install_linux_amd64.sh
 
+    - name: Move to the latest version
+      run: |
+        go get github.com/gx-org/backend@main
+        go get github.com/gx-org/gx@main
+
     - name: Generating code
       run: go generate ./...
-
-    - name: Update all the dependencies to the latest release
-      run: |
-        go mod tidy
-        export DEPS=$(go list -m -u all | grep "gx-org" | grep "\[v")
-        [ "$DEPS" != "" ] && go list -m -u all | grep "gx-org" | grep "\[v" | awk '{print $1}' | xargs -n 1 go get -u
-        go mod tidy
 
     - name: Commit generated and modified files
       run: |
