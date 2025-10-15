@@ -61,6 +61,7 @@ jobs:
 
     - name: Move to the latest version
       run: |
+        go get -u github.com/gomlx/gopjrt
         go get github.com/gx-org/backend@main
         go get github.com/gx-org/gx@main
 
