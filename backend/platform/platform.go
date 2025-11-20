@@ -50,6 +50,12 @@ func (plat *Platform) Client() *pjrt.Client {
 	return plat.clt
 }
 
+// Release everything linked to the platform.
+// It is invalid to use any device from the platform after this call.
+func (plat *Platform) Release() error {
+	return plat.clt.Destroy()
+}
+
 func toInt32(input []int) []int32 {
 	result := make([]int32, len(input))
 	for i, n := range input {

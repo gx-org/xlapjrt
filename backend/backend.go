@@ -61,3 +61,10 @@ func (b *pBackend) NewOps(funcName string) (ops.Graph, error) {
 func (b *pBackend) Client() *pjrt.Client {
 	return b.plat.Client()
 }
+
+// Release the backend.
+func (b *pBackend) Release() error {
+	err := b.plat.Release()
+	b.plat = nil
+	return err
+}
