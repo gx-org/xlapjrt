@@ -31,7 +31,7 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	gxfmt "github.com/gx-org/gx/base/fmt"
-	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	pjrtplatform "github.com/gx-org/xlapjrt/backend/platform"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
@@ -554,7 +554,7 @@ func (g *Graph) Transpose(x ops.Node, permutation []int) (ops.Node, error) {
 }
 
 // ArgMinMax returns a new argmin/argmax node.
-func (g *Graph) ArgMinMax(x ops.Node, axis int, outputKind ir.Kind, isMin bool) (ops.Node, error) {
+func (g *Graph) ArgMinMax(x ops.Node, axis int, outputKind irkind.Kind, isMin bool) (ops.Node, error) {
 	xlaOp, err := xlabuilder.ArgMinMax(g.xlaHandle(x), axis, pjrtgx.ToDType(outputKind.DType()), isMin)
 	if err != nil {
 		return nil, err

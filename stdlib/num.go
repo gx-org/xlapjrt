@@ -22,6 +22,7 @@ import (
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/evaluator"
 	"github.com/gx-org/gx/interp/fun"
@@ -141,7 +142,7 @@ func evalIota(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.F
 		return nil, err
 	}
 	targetShape := &shape.Shape{
-		DType:       ir.DefaultIntKind.DType(),
+		DType:       irkind.DefaultInt.DType(),
 		AxisLengths: axes,
 	}
 	op, err := pjrtGraph(env).Iota(targetShape, axisIndex)
@@ -164,14 +165,14 @@ func evalArgmax(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir
 	if err != nil {
 		return nil, err
 	}
-	op, err := pjrtGraph(env).ArgMinMax(argNode, int(axisIndex), ir.DefaultIntKind, false)
+	op, err := pjrtGraph(env).ArgMinMax(argNode, int(axisIndex), irkind.DefaultInt, false)
 	if err != nil {
 		return nil, err
 	}
 	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
-			DType:       ir.DefaultIntKind.DType(),
+			DType:       irkind.DefaultInt.DType(),
 			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
 		},
 	})
