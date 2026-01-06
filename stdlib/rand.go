@@ -63,7 +63,7 @@ func evalPhilox(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir
 
 	philoxStateElement, err := mat.ElementsFromNodes(
 		call.File(),
-		&ir.ValueRef{
+		&ir.Ident{
 			Src:  stateArray.Name,
 			Stor: stateArray.Storage(),
 		},
