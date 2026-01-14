@@ -43,10 +43,10 @@ func New(name string) (*api.Runtime, error) {
 		// fallback to embedded files in the binary.
 		importer = embedpkg.New()
 	}
-	bld := builder.New(importers.NewCacheLoader(
+	bld := builder.New(
 		stdlib.Importer(pjrtstdlib.Stdlib),
 		importer,
-	))
+	)
 	return NewWithBuilder(name, bld)
 }
 
