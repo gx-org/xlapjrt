@@ -88,10 +88,10 @@ func xlaUnaryFunc(f func(*xlabuilder.Op) (*xlabuilder.Op, error)) interp.FuncBui
 		if err != nil {
 			return nil, err
 		}
-		return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+		return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 			Node:  node,
 			Shape: xShape,
-		})
+		}, call.Node().Type())
 	}
 }
 
@@ -143,10 +143,10 @@ func xlaBinaryFunc(f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, e
 			return nil, err
 		}
 		outShape := shapeF(xShape, yShape)
-		return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+		return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 			Node:  node,
 			Shape: outShape,
-		})
+		}, call.Node().Type())
 	}
 }
 

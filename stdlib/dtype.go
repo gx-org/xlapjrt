@@ -43,11 +43,11 @@ func evalReinterpret(env evaluator.Env, call elements.CallAt, fn fun.Func, irFun
 	if err != nil {
 		return nil, err
 	}
-	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       dtype,
 			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
 		},
-	})
+	}, call.Node().Type())
 }

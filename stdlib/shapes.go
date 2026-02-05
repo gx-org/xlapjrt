@@ -47,13 +47,13 @@ func evalConcat(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir
 	if err != nil {
 		return nil, err
 	}
-	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       xShapes[0].DType,
 			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
 		},
-	})
+	}, call.Node().Type())
 }
 
 func evalLen(env evaluator.Env, call elements.CallAt, _ fun.Func, _ *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
@@ -91,13 +91,13 @@ func evalSplit(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.
 	if err != nil {
 		return nil, err
 	}
-	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       firstArgShape.DType,
 			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
 		},
-	})
+	}, call.Node().Type())
 }
 
 func evalGather(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
@@ -157,11 +157,11 @@ func evalGather(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir
 	if err != nil {
 		return nil, err
 	}
-	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       xShape.DType,
 			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
 		},
-	})
+	}, call.Node().Type())
 }

@@ -61,26 +61,23 @@ func evalPhilox(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir
 		return nil, err
 	}
 
-	philoxStateElement, err := mat.ElementsFromNodes(
-		call.File(),
-		&ir.Ident{
-			Src:  stateArray.Name,
-			Stor: stateArray.Storage(),
-		},
+	philoxStateElement, err := materialise.ElementFromNode(call.File(), mat,
 		&ops.OutputNode{
 			Node:  newState,
 			Shape: philoxStateShape,
-		})
+		},
+		stateArray.Storage().Type())
 	if err != nil {
 		return nil, err
 	}
-	valuesElement, err := mat.ElementsFromNodes(
-		call.File(),
-		call.Node().ExprFromResult(1),
+	valuesElement, err := materialise.ElementFromNode(
+		call.File(), mat,
 		&ops.OutputNode{
 			Node:  values,
 			Shape: targetShape,
-		})
+		},
+		call.Node().ExprFromResult(1).Type(),
+	)
 	if err != nil {
 		return nil, err
 	}

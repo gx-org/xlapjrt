@@ -51,13 +51,13 @@ func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) in
 		if err != nil {
 			return nil, err
 		}
-		return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+		return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 			Node: resultNode,
 			Shape: &shape.Shape{
 				DType:       xShape.DType,
 				AxisLengths: resultNode.(interface{ PJRTDims() []int }).PJRTDims(),
 			},
-		})
+		}, call.Node().Type())
 	}
 }
 
@@ -84,10 +84,10 @@ func evalTranspose(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc 
 		DType:       argShape.DType,
 		AxisLengths: targetLengths,
 	}
-	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
-	})
+	}, call.Node().Type())
 }
 
 func evalEinsum(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
@@ -123,13 +123,13 @@ func evalEinsum(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir
 	if err != nil {
 		return nil, fmt.Errorf("\nlhsContractingAxes: %v\nlhsBatchAxes: %v\nrhsContractingAxes: %v\nrhsBatchAxes: %v\nleft: %v\nright: %v", lhsContractingAxes, lhsBatchAxes, rhsContractingAxes, rhsBatchAxes, leftShape, rightShape)
 	}
-	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       leftShape.DType,
 			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
 		},
-	})
+	}, call.Node().Type())
 }
 
 func evalIota(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
@@ -149,10 +149,11 @@ func evalIota(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.F
 	if err != nil {
 		return nil, err
 	}
-	return builtin.Materialiser(env).ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	mat := builtin.Materialiser(env)
+	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 		Node:  op,
 		Shape: targetShape,
-	})
+	}, call.Node().Type())
 }
 
 func evalArgmax(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
@@ -169,11 +170,11 @@ func evalArgmax(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir
 	if err != nil {
 		return nil, err
 	}
-	return mat.ElementsFromNodes(call.File(), call.Node(), &ops.OutputNode{
+	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       irkind.DefaultInt.DType(),
 			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
 		},
-	})
+	}, call.Node().Type())
 }
