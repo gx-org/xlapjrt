@@ -132,30 +132,6 @@ func evalEinsum(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir
 	}, call.Node().Type())
 }
 
-func evalIota(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	axes, err := elements.AxesFromElement(args[0])
-	if err != nil {
-		return nil, err
-	}
-	axisIndex, err := elements.ConstantIntFromElement(args[1])
-	if err != nil {
-		return nil, err
-	}
-	targetShape := &shape.Shape{
-		DType:       irkind.DefaultInt.DType(),
-		AxisLengths: axes,
-	}
-	op, err := pjrtGraph(env).Iota(targetShape, axisIndex)
-	if err != nil {
-		return nil, err
-	}
-	mat := builtin.Materialiser(env)
-	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
-		Node:  op,
-		Shape: targetShape,
-	}, call.Node().Type())
-}
-
 func evalArgmax(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	argNode, _, err := materialise.Element(mat, args[0])

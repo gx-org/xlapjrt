@@ -54,7 +54,6 @@ var Stdlib = &impl.Stdlib{
 		Sqrt:     xlaUnaryFunc(xlabuilder.Sqrt),
 	},
 	Num: impl.Num{
-		Iota:      evalIota,
 		Transpose: evalTranspose,
 		Einsum:    evalEinsum,
 		MatMul:    xlaBinaryFunc(xlabuilder.Dot, matmulShape),
