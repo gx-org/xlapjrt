@@ -36,7 +36,7 @@ var philoxStateShape = &shape.Shape{
 func evalPhilox(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element, dtyp dtype.DataType) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	philox := fn.Recv().Element
-	philoxStruct := ir.Underlying(philox.NamedType()).(*ir.StructType)
+	philoxStruct := ir.Underlying(philox.Type()).(*ir.StructType)
 	stateArray := philoxStruct.Fields.FindField("state")
 	field, err := philox.Select(&ir.SelectorExpr{
 		X:    call.Node(),
@@ -82,7 +82,7 @@ func evalPhilox(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir
 		return nil, err
 	}
 	return []ir.Element{
-		fun.NewNamedType(interp.NewRunFunc, philox.NamedType(), elements.NewStruct(
+		fun.NewNamedType(interp.NewRunFunc, philox.TypeMethods(), elements.NewStruct(
 			philoxStruct,
 			map[string]ir.Element{"state": philoxStateElement[0]},
 		)),
