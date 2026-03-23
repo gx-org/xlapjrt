@@ -35,20 +35,9 @@ import (
 // Stdlib is the PJRT implementation of the standard library.
 var Stdlib = &impl.Stdlib{
 	Math: impl.Math{
-		Abs:      xlaUnaryFunc(xlabuilder.Abs),
-		Ceil:     xlaUnaryFunc(xlabuilder.Ceil),
-		Erf:      xlaUnaryFunc(xlabuilder.Erf),
-		Expm1:    xlaUnaryFunc(xlabuilder.Expm1),
-		Floor:    xlaUnaryFunc(xlabuilder.Floor),
-		Log1p:    xlaUnaryFunc(xlabuilder.Log1p),
-		Logistic: xlaUnaryFunc(xlabuilder.Logistic),
-		Max:      xlaBinaryFunc(xlabuilder.Max, minmaxDType),
-		Min:      xlaBinaryFunc(xlabuilder.Min, minmaxDType),
-		Pow:      xlaBinaryFunc(xlabuilder.Pow, firstArgument),
-		Round:    xlaUnaryFunc(xlabuilder.Round),
-		Rsqrt:    xlaUnaryFunc(xlabuilder.Rsqrt),
-		Sign:     xlaUnaryFunc(xlabuilder.Sign),
-		Sqrt:     xlaUnaryFunc(xlabuilder.Sqrt),
+		Max: xlaBinaryFunc(xlabuilder.Max, minmaxDType),
+		Min: xlaBinaryFunc(xlabuilder.Min, minmaxDType),
+		Pow: xlaBinaryFunc(xlabuilder.Pow, firstArgument),
 	},
 	Num: impl.Num{
 		Transpose: evalTranspose,
