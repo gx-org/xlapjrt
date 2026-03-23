@@ -34,9 +34,6 @@ import (
 
 // Stdlib is the PJRT implementation of the standard library.
 var Stdlib = &impl.Stdlib{
-	Dtype: impl.Dtype{
-		Reinterpret: evalReinterpret,
-	},
 	Math: impl.Math{
 		Abs:      xlaUnaryFunc(xlabuilder.Abs),
 		Ceil:     xlaUnaryFunc(xlabuilder.Ceil),

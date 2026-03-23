@@ -432,19 +432,6 @@ func (g *Graph) Cast(x ops.Node, target dtype.DataType) (ops.Node, error) {
 	return g.newNode(xlaOp), nil
 }
 
-// Bitcast returns a bitcast/reinterpret operator node.
-func (g *Graph) Bitcast(x ops.Node, target dtype.DataType) (ops.Node, error) {
-	xlaDType := pjrtgx.ToDType(target)
-	if xlaDType == dtypes.InvalidDType {
-		return nil, errors.Errorf("cannot convert %s to a XLA data type", target.String())
-	}
-	xlaOp, err := xlabuilder.Bitcast(g.xlaHandle(x), xlaDType)
-	if err != nil {
-		return nil, err
-	}
-	return g.newNode(xlaOp), nil
-}
-
 type tuple struct {
 	*Node
 }
