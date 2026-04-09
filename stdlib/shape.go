@@ -22,13 +22,13 @@ import (
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
-func evalConcat(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalConcat(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	xs := make([]ops.Node, len(args)-1)
 	xShapes := make([]*shape.Shape, len(args)-1)
@@ -56,7 +56,7 @@ func evalConcat(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir
 	}, call.Node().Type())
 }
 
-func evalLen(env evaluator.Env, call elements.CallAt, _ fun.Func, _ *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalLen(env engine.Env, call elements.CallAt, _ fun.Func, _ *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	shape, err := elements.ShapeFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func evalLen(env evaluator.Env, call elements.CallAt, _ fun.Func, _ *ir.FuncBuil
 	return []ir.Element{out}, nil
 }
 
-func evalSplit(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalSplit(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	node, firstArgShape, err := materialise.Element(mat, args[1])
 	if err != nil {
@@ -100,7 +100,7 @@ func evalSplit(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.
 	}, call.Node().Type())
 }
 
-func evalGather(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalGather(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	inputShape, err := elements.ShapeFromElement(args[0])
 	if err != nil {
 		return nil, err

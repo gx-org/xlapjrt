@@ -23,7 +23,7 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
@@ -60,7 +60,7 @@ var Stdlib = &impl.Stdlib{
 }
 
 func xlaUnaryFunc(f func(*xlabuilder.Op) (*xlabuilder.Op, error)) interp.FuncBuiltin {
-	return func(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	return func(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("unary function expects 1 argument, got %d", len(args))
 		}
@@ -110,7 +110,7 @@ func matmulShape(x, y *shape.Shape) *shape.Shape {
 }
 
 func xlaBinaryFunc(f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, error), shapeF func(x, y *shape.Shape) *shape.Shape) interp.FuncBuiltin {
-	return func(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	return func(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 		mat := builtin.Materialiser(env)
 		if len(args) != 2 {
 			return nil, fmt.Errorf("binary function expects 2 arguments, got %d", len(args))
@@ -135,6 +135,6 @@ func xlaBinaryFunc(f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, e
 	}
 }
 
-func pjrtGraph(ctx evaluator.Env) *pjrtgraph.Graph {
+func pjrtGraph(ctx engine.Env) *pjrtgraph.Graph {
 	return ctx.Evaluator().ArrayOps().Graph().(*pjrtgraph.Graph)
 }

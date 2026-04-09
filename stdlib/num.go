@@ -24,7 +24,7 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
@@ -32,7 +32,7 @@ import (
 )
 
 func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) interp.FuncBuiltin {
-	return func(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	return func(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 		mat := builtin.Materialiser(env)
 		x, xShape, err := materialise.Element(mat, args[0])
 		if err != nil {
@@ -61,7 +61,7 @@ func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) in
 	}
 }
 
-func evalTranspose(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalTranspose(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	argNode, argShape, err := materialise.Element(mat, args[0])
 	if err != nil {
@@ -90,7 +90,7 @@ func evalTranspose(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc 
 	}, call.Node().Type())
 }
 
-func evalEinsum(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalEinsum(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	left, leftShape, err := materialise.Element(mat, args[0])
 	if err != nil {
@@ -132,7 +132,7 @@ func evalEinsum(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir
 	}, call.Node().Type())
 }
 
-func evalArgmax(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalArgmax(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	argNode, _, err := materialise.Element(mat, args[0])
 	if err != nil {

@@ -20,7 +20,7 @@ import (
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
-	"github.com/gx-org/gx/interp/evaluator"
+	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
@@ -33,7 +33,7 @@ var philoxStateShape = &shape.Shape{
 	AxisLengths: []int{3},
 }
 
-func evalPhilox(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element, dtyp dtype.DataType) ([]ir.Element, error) {
+func evalPhilox(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element, dtyp dtype.DataType) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	philox := fn.Recv().Element
 	philoxStruct := ir.Underlying(philox.Type()).(*ir.StructType)
@@ -90,10 +90,10 @@ func evalPhilox(env evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir
 	}, nil
 }
 
-func evalPhiloxUint32(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalPhiloxUint32(ctx engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	return evalPhilox(ctx, call, fn, irFunc, args, dtype.Uint32)
 }
 
-func evalPhiloxUint64(ctx evaluator.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalPhiloxUint64(ctx engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
 	return evalPhilox(ctx, call, fn, irFunc, args, dtype.Uint64)
 }
