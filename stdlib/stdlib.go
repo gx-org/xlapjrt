@@ -136,5 +136,5 @@ func xlaBinaryFunc(f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, e
 }
 
 func pjrtGraph(ctx engine.Env) *pjrtgraph.Graph {
-	return ctx.Evaluator().ArrayOps().Graph().(*pjrtgraph.Graph)
+	return ctx.Engine().ArrayOps().Graph().(*pjrtgraph.Graph)
 }

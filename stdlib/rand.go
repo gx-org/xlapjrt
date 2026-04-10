@@ -45,7 +45,7 @@ func evalPhilox(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.Fu
 	if err != nil {
 		return nil, err
 	}
-	evaluator := env.Evaluator()
+	eng := env.Engine()
 	stateNode, _, err := materialise.Element(mat, field)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func evalPhilox(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.Fu
 	if err != nil {
 		return nil, err
 	}
-	bckGraph := evaluator.ArrayOps().Graph().(*xlagraph.Graph)
+	bckGraph := eng.ArrayOps().Graph().(*xlagraph.Graph)
 	targetShape := &shape.Shape{DType: dtyp, AxisLengths: dimensions}
 	newState, values, err := bckGraph.RngBitGenerator(stateNode, targetShape)
 	if err != nil {

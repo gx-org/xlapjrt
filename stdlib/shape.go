@@ -66,7 +66,7 @@ func evalLen(env engine.Env, call elements.CallAt, _ fun.Func, _ *ir.FuncBuiltin
 	if err != nil {
 		return nil, err
 	}
-	out, err := env.Evaluator().ArrayOps().ElementFromAtom(env.ExprEval().File(), value, call.Node(), ir.Int64Type())
+	out, err := env.Engine().ArrayOps().ElementFromAtom(env.ExprEval().File(), value, call.Node(), ir.Int64Type())
 	if err != nil {
 		return nil, err
 	}
