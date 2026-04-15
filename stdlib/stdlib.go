@@ -22,9 +22,7 @@ import (
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
@@ -60,7 +58,7 @@ var Stdlib = &impl.Stdlib{
 }
 
 func xlaUnaryFunc(f func(*xlabuilder.Op) (*xlabuilder.Op, error)) interp.FuncBuiltin {
-	return func(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	return func(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("unary function expects 1 argument, got %d", len(args))
 		}
@@ -73,10 +71,10 @@ func xlaUnaryFunc(f func(*xlabuilder.Op) (*xlabuilder.Op, error)) interp.FuncBui
 		if err != nil {
 			return nil, err
 		}
-		return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
+		return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
 			Node:  node,
 			Shape: xShape,
-		}, call.Node().Type())
+		}, call.Type())
 	}
 }
 
@@ -110,7 +108,7 @@ func matmulShape(x, y *shape.Shape) *shape.Shape {
 }
 
 func xlaBinaryFunc(f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, error), shapeF func(x, y *shape.Shape) *shape.Shape) interp.FuncBuiltin {
-	return func(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+	return func(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 		mat := builtin.Materialiser(env)
 		if len(args) != 2 {
 			return nil, fmt.Errorf("binary function expects 2 arguments, got %d", len(args))
@@ -128,10 +126,10 @@ func xlaBinaryFunc(f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, e
 			return nil, err
 		}
 		outShape := shapeF(xShape, yShape)
-		return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
+		return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
 			Node:  node,
 			Shape: outShape,
-		}, call.Node().Type())
+		}, call.Type())
 	}
 }
 

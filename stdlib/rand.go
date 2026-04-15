@@ -33,13 +33,16 @@ var philoxStateShape = &shape.Shape{
 	AxisLengths: []int{3},
 }
 
-func evalPhilox(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element, dtyp dtype.DataType) ([]ir.Element, error) {
+func evalPhilox(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element, dtyp dtype.DataType) ([]ir.Element, error) {
+	philox, err := fun.ToNamedType(recv)
+	if err != nil {
+		return nil, err
+	}
 	mat := builtin.Materialiser(env)
-	philox := fn.Recv().Element
 	philoxStruct := ir.Underlying(philox.Type()).(*ir.StructType)
 	stateArray := philoxStruct.Fields.FindField("state")
 	field, err := philox.Select(&ir.SelectorExpr{
-		X:    call.Node(),
+		X:    call,
 		Stor: stateArray.Storage(),
 	})
 	if err != nil {
@@ -61,7 +64,7 @@ func evalPhilox(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.Fu
 		return nil, err
 	}
 
-	philoxStateElement, err := materialise.ElementFromNode(call.File(), mat,
+	philoxStateElement, err := materialise.ElementFromNode(env.File(), mat,
 		&ops.OutputNode{
 			Node:  newState,
 			Shape: philoxStateShape,
@@ -71,12 +74,12 @@ func evalPhilox(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.Fu
 		return nil, err
 	}
 	valuesElement, err := materialise.ElementFromNode(
-		call.File(), mat,
+		env.File(), mat,
 		&ops.OutputNode{
 			Node:  values,
 			Shape: targetShape,
 		},
-		call.Node().ExprFromResult(1).Type(),
+		call.ExprFromResult(1).Type(),
 	)
 	if err != nil {
 		return nil, err
@@ -90,10 +93,10 @@ func evalPhilox(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.Fu
 	}, nil
 }
 
-func evalPhiloxUint32(ctx engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	return evalPhilox(ctx, call, fn, irFunc, args, dtype.Uint32)
+func evalPhiloxUint32(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	return evalPhilox(env, call, recv, args, dtype.Uint32)
 }
 
-func evalPhiloxUint64(ctx engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
-	return evalPhilox(ctx, call, fn, irFunc, args, dtype.Uint64)
+func evalPhiloxUint64(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
+	return evalPhilox(env, call, recv, args, dtype.Uint64)
 }

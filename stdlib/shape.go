@@ -23,12 +23,11 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/fun"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
 
-func evalConcat(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalConcat(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	xs := make([]ops.Node, len(args)-1)
 	xShapes := make([]*shape.Shape, len(args)-1)
@@ -47,33 +46,33 @@ func evalConcat(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.Fu
 	if err != nil {
 		return nil, err
 	}
-	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
+	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       xShapes[0].DType,
 			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
 		},
-	}, call.Node().Type())
+	}, call.Type())
 }
 
-func evalLen(env engine.Env, call elements.CallAt, _ fun.Func, _ *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalLen(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	shape, err := elements.ShapeFromElement(args[0])
 	if err != nil {
 		return nil, err
 	}
 	length := ir.Int(shape.OuterAxisLength())
-	value, err := values.AtomIntegerValue(call.Node().Type(), length)
+	value, err := values.AtomIntegerValue(call.Type(), length)
 	if err != nil {
 		return nil, err
 	}
-	out, err := env.Engine().ArrayOps().ElementFromAtom(env.ExprEval().File(), value, call.Node(), ir.Int64Type())
+	out, err := env.Engine().ArrayOps().ElementFromAtom(env.ExprEval().File(), value, call, ir.Int64Type())
 	if err != nil {
 		return nil, err
 	}
 	return []ir.Element{out}, nil
 }
 
-func evalSplit(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalSplit(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
 	node, firstArgShape, err := materialise.Element(mat, args[1])
 	if err != nil {
@@ -91,16 +90,16 @@ func evalSplit(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.Fun
 	if err != nil {
 		return nil, err
 	}
-	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
+	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       firstArgShape.DType,
 			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
 		},
-	}, call.Node().Type())
+	}, call.Type())
 }
 
-func evalGather(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.FuncBuiltin, args []ir.Element) ([]ir.Element, error) {
+func evalGather(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	inputShape, err := elements.ShapeFromElement(args[0])
 	if err != nil {
 		return nil, err
@@ -157,11 +156,11 @@ func evalGather(env engine.Env, call elements.CallAt, fn fun.Func, irFunc *ir.Fu
 	if err != nil {
 		return nil, err
 	}
-	return materialise.ElementFromNode(call.File(), mat, &ops.OutputNode{
+	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       xShape.DType,
 			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
 		},
-	}, call.Node().Type())
+	}, call.Type())
 }
