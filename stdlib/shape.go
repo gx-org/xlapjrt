@@ -72,33 +72,6 @@ func evalLen(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.E
 	return []ir.Element{out}, nil
 }
 
-func evalSplit(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	mat := builtin.Materialiser(env)
-	node, firstArgShape, err := materialise.Element(mat, args[1])
-	if err != nil {
-		return nil, err
-	}
-	axis, err := elements.ConstantScalarFromElement[ir.Int](args[0])
-	if err != nil {
-		return nil, err
-	}
-	numSplits, err := elements.ConstantScalarFromElement[ir.Int](args[2])
-	if err != nil {
-		return nil, err
-	}
-	op, err := pjrtGraph(env).Split(node, int(axis), int(numSplits))
-	if err != nil {
-		return nil, err
-	}
-	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-		Node: op,
-		Shape: &shape.Shape{
-			DType:       firstArgShape.DType,
-			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
-		},
-	}, call.Type())
-}
-
 func evalGather(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	inputShape, err := elements.ShapeFromElement(args[0])
 	if err != nil {

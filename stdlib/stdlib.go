@@ -52,7 +52,6 @@ var Stdlib = &impl.Stdlib{
 	Shapes: impl.Shapes{
 		Concat: evalConcat,
 		Len:    evalLen,
-		Split:  evalSplit,
 		Gather: evalGather,
 	},
 }
