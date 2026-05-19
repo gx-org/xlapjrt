@@ -71,3 +71,17 @@ func (g *Graph) Split(x ops.Node, axis int, numSplits int) (ops.Node, error) {
 
 	return g.Concat(0, reshapedNodes)
 }
+
+// Concat concatenates multiple arrays into a single array.
+func (g *Graph) Concat(axis int, nodes []ops.Node) (ops.Node, error) {
+	inputs, err := g.xlaHandles(nodes)
+	if err != nil {
+		return nil, err
+	}
+
+	xlaOp, err := xlabuilder.Concatenate(axis, inputs...)
+	if err != nil {
+		return nil, err
+	}
+	return g.newNode(xlaOp), nil
+}

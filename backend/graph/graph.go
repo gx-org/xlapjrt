@@ -488,20 +488,6 @@ func ToXLATuple(n ops.Node) ops.Tuple {
 	return &tuple{Node: n.(*Node)}
 }
 
-// Concat concatenates multiple arrays into a single array.
-func (g *Graph) Concat(axis int, nodes []ops.Node) (ops.Node, error) {
-	inputs, err := g.xlaHandles(nodes)
-	if err != nil {
-		return nil, err
-	}
-
-	xlaOp, err := xlabuilder.Concatenate(axis, inputs...)
-	if err != nil {
-		return nil, err
-	}
-	return g.newNode(xlaOp), nil
-}
-
 // Slice returns a slice on a node.
 func (g *Graph) Slice(x ops.Node, i int) (ops.Node, error) {
 	shape := x.(pjrtNode).BackendShape()

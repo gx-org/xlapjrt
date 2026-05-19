@@ -50,7 +50,6 @@ var Stdlib = &impl.Stdlib{
 		PhiloxUint64: evalPhiloxUint64,
 	},
 	Shapes: impl.Shapes{
-		Concat: evalConcat,
 		Len:    evalLen,
 		Gather: evalGather,
 	},
