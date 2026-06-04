@@ -32,26 +32,15 @@ import (
 
 // Stdlib is the PJRT implementation of the standard library.
 var Stdlib = &impl.Stdlib{
-	Math: impl.Math{
-		Max: xlaBinaryFunc(xlabuilder.Max, minmaxDType),
-		Min: xlaBinaryFunc(xlabuilder.Min, minmaxDType),
-		Pow: xlaBinaryFunc(xlabuilder.Pow, firstArgument),
-	},
 	Num: impl.Num{
-		Transpose: evalTranspose,
-		Einsum:    evalEinsum,
-		MatMul:    xlaBinaryFunc(xlabuilder.Dot, matmulShape),
-		Sum:       xlaReductionFunc(xlabuilder.ReduceSum),
-		ReduceMax: xlaReductionFunc(xlabuilder.ReduceMax),
-		Argmax:    evalArgmax,
+		Einsum: evalEinsum,
 	},
 	Rand: impl.Rand{
 		PhiloxUint32: evalPhiloxUint32,
 		PhiloxUint64: evalPhiloxUint64,
 	},
 	Shapes: impl.Shapes{
-		Len:    evalLen,
-		Gather: evalGather,
+		Len: evalLen,
 	},
 }
 
@@ -73,35 +62,6 @@ func xlaUnaryFunc(f func(*xlabuilder.Op) (*xlabuilder.Op, error)) interp.FuncBui
 			Node:  node,
 			Shape: xShape,
 		}, call.Type())
-	}
-}
-
-func firstArgument(x, _ *shape.Shape) *shape.Shape {
-	return x
-}
-
-func minmaxDType(x, y *shape.Shape) *shape.Shape {
-	target := &shape.Shape{
-		DType:       x.DType,
-		AxisLengths: x.AxisLengths,
-	}
-	if y.AxisLengths != nil {
-		target.AxisLengths = y.AxisLengths
-	}
-	return target
-}
-
-func matmulShape(x, y *shape.Shape) *shape.Shape {
-	var lengths []int
-	if len(x.AxisLengths) > 0 {
-		lengths = append(lengths, x.AxisLengths[:len(x.AxisLengths)-1]...)
-	}
-	if len(y.AxisLengths) > 0 {
-		lengths = append(lengths, y.AxisLengths[1:]...)
-	}
-	return &shape.Shape{
-		DType:       x.DType,
-		AxisLengths: lengths,
 	}
 }
 

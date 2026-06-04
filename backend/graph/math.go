@@ -74,6 +74,21 @@ func (g *Graph) Logistic(x ops.Node) (ops.Node, error) {
 	return g.UnaryFunc(x, xlabuilder.Logistic)
 }
 
+// Min returns the minimum between x and y.
+func (g *Graph) Min(x, y ops.Node) (ops.Node, error) {
+	return g.BinaryFunc(x, y, xlabuilder.Min)
+}
+
+// Max returns the maximum between x and y.
+func (g *Graph) Max(x, y ops.Node) (ops.Node, error) {
+	return g.BinaryFunc(x, y, xlabuilder.Max)
+}
+
+// Pow returns x to the power of y.
+func (g *Graph) Pow(x, y ops.Node) (ops.Node, error) {
+	return g.BinaryFunc(x, y, xlabuilder.Pow)
+}
+
 // Round returns the nearest integer of x.
 func (g *Graph) Round(x ops.Node) (ops.Node, error) {
 	return g.UnaryFunc(x, xlabuilder.Round)

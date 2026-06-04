@@ -31,7 +31,6 @@ import (
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
 	gxfmt "github.com/gx-org/gx/base/fmt"
-	"github.com/gx-org/gx/build/ir/irkind"
 	pjrtplatform "github.com/gx-org/xlapjrt/backend/platform"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
@@ -515,24 +514,6 @@ func (g *Graph) Slice(x ops.Node, i int) (ops.Node, error) {
 		return nil, err
 	}
 	return g.newNode(reshapeOp), nil
-}
-
-// Transpose transposes the axes of x.
-func (g *Graph) Transpose(x ops.Node, permutation []int) (ops.Node, error) {
-	xlaOp, err := xlabuilder.Transpose(g.xlaHandle(x), permutation...)
-	if err != nil {
-		return nil, err
-	}
-	return g.newNode(xlaOp), nil
-}
-
-// ArgMinMax returns a new argmin/argmax node.
-func (g *Graph) ArgMinMax(x ops.Node, axis int, outputKind irkind.Kind, isMin bool) (ops.Node, error) {
-	xlaOp, err := xlabuilder.ArgMinMax(g.xlaHandle(x), axis, pjrtgx.ToDType(outputKind.DType()), isMin)
-	if err != nil {
-		return nil, err
-	}
-	return g.newNode(xlaOp), nil
 }
 
 // BroadcastInDim broadcasts x to an output with the given shape.

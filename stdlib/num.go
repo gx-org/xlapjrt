@@ -16,78 +16,15 @@ package stdlib
 
 import (
 	"fmt"
-	"slices"
 
-	"github.com/gomlx/gopjrt/xlabuilder"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/ir"
-	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp"
 	"github.com/gx-org/gx/interp/materialise"
 	"github.com/gx-org/gx/stdlib/builtin"
 )
-
-func xlaReductionFunc(f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) interp.FuncBuiltin {
-	return func(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-		mat := builtin.Materialiser(env)
-		x, xShape, err := materialise.Element(mat, args[0])
-		if err != nil {
-			return nil, err
-		}
-		axes, err := elements.AxesFromElement(args[1])
-		if err != nil {
-			return nil, err
-		}
-		if len(axes) == 0 {
-			// Note that we diverge from XLA's behavior: if no reduction axes are
-			// specified, treat this as a no-op.
-			return []ir.Element{args[0]}, nil
-		}
-		resultNode, err := pjrtGraph(env).ReduceFunc(x, axes, f)
-		if err != nil {
-			return nil, err
-		}
-		return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-			Node: resultNode,
-			Shape: &shape.Shape{
-				DType:       xShape.DType,
-				AxisLengths: resultNode.(interface{ PJRTDims() []int }).PJRTDims(),
-			},
-		}, call.Type())
-	}
-}
-
-func evalTranspose(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	mat := builtin.Materialiser(env)
-	argNode, argShape, err := materialise.Element(mat, args[0])
-	if err != nil {
-		return nil, err
-	}
-	if len(argShape.AxisLengths) <= 1 {
-		return []ir.Element{args[0]}, nil
-	}
-	wantAxes := make([]int, len(argShape.AxisLengths))
-	for i := range wantAxes {
-		wantAxes[i] = len(wantAxes) - i - 1
-	}
-	op, err := pjrtGraph(env).Transpose(argNode, wantAxes)
-	if err != nil {
-		return nil, err
-	}
-	targetLengths := append([]int{}, argShape.AxisLengths...)
-	slices.Reverse(targetLengths)
-	targetShape := &shape.Shape{
-		DType:       argShape.DType,
-		AxisLengths: targetLengths,
-	}
-	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-		Node:  op,
-		Shape: targetShape,
-	}, call.Type())
-}
 
 func evalEinsum(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	mat := builtin.Materialiser(env)
@@ -126,29 +63,6 @@ func evalEinsum(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []i
 		Node: op,
 		Shape: &shape.Shape{
 			DType:       leftShape.DType,
-			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
-		},
-	}, call.Type())
-}
-
-func evalArgmax(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	mat := builtin.Materialiser(env)
-	argNode, _, err := materialise.Element(mat, args[0])
-	if err != nil {
-		return nil, err
-	}
-	axisIndex, err := elements.ConstantScalarFromElement[ir.Int](args[1])
-	if err != nil {
-		return nil, err
-	}
-	op, err := pjrtGraph(env).ArgMinMax(argNode, int(axisIndex), irkind.DefaultInt, false)
-	if err != nil {
-		return nil, err
-	}
-	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-		Node: op,
-		Shape: &shape.Shape{
-			DType:       irkind.DefaultInt.DType(),
 			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
 		},
 	}, call.Type())

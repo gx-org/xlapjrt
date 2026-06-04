@@ -15,45 +15,11 @@
 package stdlib
 
 import (
-	"fmt"
-
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/api/values"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/interp/materialise"
-	"github.com/gx-org/gx/stdlib/builtin"
 )
-
-func evalConcat(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	mat := builtin.Materialiser(env)
-	xs := make([]ops.Node, len(args)-1)
-	xShapes := make([]*shape.Shape, len(args)-1)
-	for i, arg := range args[1:] {
-		var err error
-		xs[i], xShapes[i], err = materialise.Element(mat, arg)
-		if err != nil {
-			return nil, err
-		}
-	}
-	axis, err := elements.ConstantScalarFromElement[ir.Int](args[0])
-	if err != nil {
-		return nil, err
-	}
-	op, err := pjrtGraph(env).Concat(int(axis), xs)
-	if err != nil {
-		return nil, err
-	}
-	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-		Node: op,
-		Shape: &shape.Shape{
-			DType:       xShapes[0].DType,
-			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
-		},
-	}, call.Type())
-}
 
 func evalLen(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
 	shape, err := elements.ShapeFromElement(args[0])
@@ -70,70 +36,4 @@ func evalLen(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.E
 		return nil, err
 	}
 	return []ir.Element{out}, nil
-}
-
-func evalGather(env engine.Env, call *ir.FuncCallExpr, recv ir.Element, args []ir.Element) ([]ir.Element, error) {
-	inputShape, err := elements.ShapeFromElement(args[0])
-	if err != nil {
-		return nil, err
-	}
-	indicesShape, err := elements.ShapeFromElement(args[1])
-	if err != nil {
-		return nil, err
-	}
-	paramsRank := len(inputShape.AxisLengths)
-	indicesRank := len(indicesShape.AxisLengths)
-	indexedSubRank := indicesShape.AxisLengths[indicesRank-1] // N from documentation.
-	slicesSubRank := paramsRank - indexedSubRank              // S from documentation, the slices dimensions.
-	if slicesSubRank < 0 {
-		return nil, fmt.Errorf("Gather params are \"over-indexed\": params has only rank %d and "+
-			"indexed rank is %d (last dimension of indices)", paramsRank, indexedSubRank)
-	}
-	outputSubRank := indicesRank - 1
-
-	// * indexVectorDim is always the last one.
-	indexVectorDim := indicesRank - 1
-	// * startIndexMap is sequential and sorted
-	startIndexMap := make([]int, indexedSubRank)
-	for ii := 0; ii < indexedSubRank; ii++ {
-		startIndexMap[ii] = ii
-	}
-	// * sliceSizes are 1 everywhere but on the sliced dimensions.
-	// * collapsedSliceDims is set to collapse all dimensions set to 1.
-	sliceSizes := make([]int, paramsRank)
-	collapsedSliceDims := make([]int, indexedSubRank)
-	for ii := 0; ii < paramsRank; ii++ {
-		if ii < indexedSubRank {
-			sliceSizes[ii] = 1
-			collapsedSliceDims[ii] = ii
-		} else {
-			sliceSizes[ii] = inputShape.AxisLengths[ii]
-		}
-	}
-	// * offsetDims are the dimensions indexed.
-	offsetDims := make([]int, paramsRank-indexedSubRank)
-	for ii := range offsetDims {
-		offsetDims[ii] = outputSubRank + ii
-	}
-
-	mat := builtin.Materialiser(env)
-	x, xShape, err := materialise.Element(mat, args[0])
-	if err != nil {
-		return nil, err
-	}
-	indicesNode, _, err := materialise.Element(mat, args[1])
-	if err != nil {
-		return nil, err
-	}
-	op, err := pjrtGraph(env).Gather(x, indicesNode, indexVectorDim, offsetDims, collapsedSliceDims, startIndexMap, sliceSizes, false)
-	if err != nil {
-		return nil, err
-	}
-	return materialise.ElementFromNode(env.File(), mat, &ops.OutputNode{
-		Node: op,
-		Shape: &shape.Shape{
-			DType:       xShape.DType,
-			AxisLengths: op.(interface{ PJRTDims() []int }).PJRTDims(),
-		},
-	}, call.Type())
 }
