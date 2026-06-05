@@ -32,9 +32,6 @@ import (
 
 // Stdlib is the PJRT implementation of the standard library.
 var Stdlib = &impl.Stdlib{
-	Num: impl.Num{
-		Einsum: evalEinsum,
-	},
 	Shapes: impl.Shapes{
 		Len: evalLen,
 	},
