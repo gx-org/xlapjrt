@@ -35,10 +35,6 @@ var Stdlib = &impl.Stdlib{
 	Num: impl.Num{
 		Einsum: evalEinsum,
 	},
-	Rand: impl.Rand{
-		PhiloxUint32: evalPhiloxUint32,
-		PhiloxUint64: evalPhiloxUint64,
-	},
 	Shapes: impl.Shapes{
 		Len: evalLen,
 	},

@@ -603,16 +603,6 @@ func (g *Graph) Subgraph(name string, inputs []*shape.Shape) (ops.Graph, error) 
 	return newGraph(g.plat, inputs, builder)
 }
 
-// RngBitGenerator takes RNG state and generates the given shape filled with random values, and
-// returns the new state plus generated values.
-func (g *Graph) RngBitGenerator(state ops.Node, shape *shape.Shape) (ops.Node, ops.Node, error) {
-	newState, values, err := xlabuilder.RngBitGenerator(g.xlaHandle(state), pjrtgx.ToShape(shape))
-	if err != nil {
-		return nil, nil, err
-	}
-	return g.newNode(newState), g.newNode(values), nil
-}
-
 type subGraph struct {
 	out   ops.Node
 	comp  *xlabuilder.XlaComputation
