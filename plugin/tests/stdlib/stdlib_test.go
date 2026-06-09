@@ -19,11 +19,10 @@ import (
 	"github.com/gx-org/xlapjrt/plugin"
 	gxtesting "github.com/gx-org/gx/tests/testing"
 	"github.com/gx-org/gx/tests"
-	"github.com/gx-org/xlapjrt/stdlib"
 )
 
 func TestPJRTStdlib(t *testing.T) {
-	bld := tests.StdlibBuilder(stdlib.Stdlib)
+	bld := tests.StdlibBuilder()
 	bck, err := plugin.NewWithBuilder("cpu", bld)
 	if err != nil {
 		t.Fatal(err)

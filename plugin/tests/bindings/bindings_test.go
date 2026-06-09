@@ -20,11 +20,10 @@ import (
 	"github.com/gx-org/xlapjrt/plugin"
 	bindingstests "github.com/gx-org/gx/golang/tests"
 	gxtesting "github.com/gx-org/gx/tests/testing"
-	pjrtstdlib "github.com/gx-org/xlapjrt/stdlib"
 )
 
 func TestGoBindings(t *testing.T) {
-	bld := gxtesting.NewBuilderStaticSource(pjrtstdlib.Stdlib)
+	bld := gxtesting.NewBuilderStaticSource()
 	rtm, err := plugin.NewWithBuilder("cpu", bld)
 	if err != nil {
 		t.Fatalf("\n%+v", err)

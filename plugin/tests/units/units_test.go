@@ -20,11 +20,10 @@ import (
 	"github.com/gx-org/gx/api"
 	gxtesting "github.com/gx-org/gx/tests/testing"
 	"github.com/gx-org/gx/tests"
-	"github.com/gx-org/xlapjrt/stdlib"
 )
 
 func newRuntime() (*api.Runtime, error) {
-	bld := tests.StdlibBuilder(stdlib.Stdlib)
+	bld := tests.StdlibBuilder()
 	return plugin.NewWithBuilder("cpu", bld)
 }
 

@@ -26,7 +26,6 @@ import (
 	"github.com/gx-org/gx/build/importers/localfs"
 	"github.com/gx-org/gx/stdlib"
 	"github.com/gx-org/xlapjrt/backend"
-	pjrtstdlib "github.com/gx-org/xlapjrt/stdlib"
 )
 
 // New returns a new PJRT runtime given a plugin name.
@@ -44,7 +43,7 @@ func New(name string) (*api.Runtime, error) {
 		importer = embedpkg.New()
 	}
 	bld := builder.New(
-		stdlib.Importer(pjrtstdlib.Stdlib),
+		stdlib.Importer(),
 		importer,
 	)
 	return NewWithBuilder(name, bld)

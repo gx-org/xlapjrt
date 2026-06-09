@@ -21,7 +21,6 @@ import (
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/cgx/handle"
 	gxtesting "github.com/gx-org/gx/tests/testing"
-	pjrtstdlib "github.com/gx-org/xlapjrt/stdlib"
 )
 
 // #cgo CFLAGS: -I ..
@@ -30,7 +29,7 @@ import "C"
 
 //export cgx_testing_runtime
 func cgx_testing_runtime() C.struct_cgx_runtime_new_result {
-	bld := gxtesting.NewBuilderStaticSource(pjrtstdlib.Stdlib)
+	bld := gxtesting.NewBuilderStaticSource()
 	rtm, err := plugin.NewWithBuilder("cpu", bld)
 	if err != nil {
 		return C.struct_cgx_runtime_new_result{

@@ -21,7 +21,6 @@ import (
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers/embedpkg"
 	"github.com/gx-org/gx/cgx/handle"
-	pjrtstdlib "github.com/gx-org/xlapjrt/stdlib"
 )
 
 // #cgo CFLAGS: -I ..
@@ -30,7 +29,7 @@ import "C"
 
 //export cgx_builder_new_static_xlapjrt
 func cgx_builder_new_static_xlapjrt() C.cgx_builder {
-	return C.cgx_builder(handle.Wrap[*builder.Builder](embedpkg.NewBuilder(pjrtstdlib.Stdlib)))
+	return C.cgx_builder(handle.Wrap[*builder.Builder](embedpkg.NewBuilder()))
 }
 
 //export cgx_runtime_new_xlapjrt
