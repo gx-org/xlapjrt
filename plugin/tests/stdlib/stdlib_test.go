@@ -17,6 +17,8 @@ import (
 	"testing"
 
 	"github.com/gx-org/xlapjrt/plugin"
+	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/internal/testing/testrtm"
 	gxtesting "github.com/gx-org/gx/tests/testing"
 	"github.com/gx-org/gx/tests"
 )
@@ -31,4 +33,16 @@ func TestPJRTStdlib(t *testing.T) {
 	for _, path := range tests.All {
 		session.TestFolder(t, path)
 	}
+}
+
+func TestPJRTStdlibUnit(t *testing.T) {
+	bld := tests.StdlibBuilder()
+	bck, err := plugin.NewWithBuilder("cpu", bld)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testbuild.RunFactory(t, testrtm.Factory(
+		bck,
+		tests.StdlibUnits...,
+	))
 }
