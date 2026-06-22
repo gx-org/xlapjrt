@@ -18,7 +18,7 @@ package xlapjrt
 import (
 	"github.com/gomlx/gopjrt/dtypes"
 	"github.com/gomlx/gopjrt/xlabuilder"
-	"github.com/gx-org/backend/dtype"
+	dtype "github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/shape"
 )
 
