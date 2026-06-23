@@ -18,7 +18,9 @@ import (
 
 	"github.com/gx-org/xlapjrt/plugin"
 	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/internal/testing/testrtm"
+	"github.com/gx-org/gx/stdlib"
 	gxtesting "github.com/gx-org/gx/tests/testing"
 	"github.com/gx-org/gx/tests"
 )
@@ -41,8 +43,13 @@ func TestPJRTStdlibUnit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testbuild.RunFactory(t, testrtm.Factory(
-		bck,
-		tests.StdlibUnits...,
-	))
+	testbuild.RunFactory(t,
+		[]importers.Importer{
+			stdlib.Importer(),
+		},
+		testrtm.Factory(
+			bck,
+			tests.StdlibUnits...,
+		),
+	)
 }
