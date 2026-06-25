@@ -260,7 +260,7 @@ func (g *Graph) Constant(buffer platform.HostBuffer) (ops.Node, error) {
 	switch shap.DType {
 	case dtype.Bool:
 		literal, err = newLiteral(dtype.ToSlice[bool](data), shap.AxisLengths)
-	case dtype.Bfloat16:
+	case dtype.BFloat16:
 		literal, err = newLiteral(dtype.ToSlice[bfloat16.BFloat16](data), shap.AxisLengths)
 	case dtype.Float32:
 		literal, err = newLiteral(dtype.ToSlice[float32](data), shap.AxisLengths)
