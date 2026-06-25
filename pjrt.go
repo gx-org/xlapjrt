@@ -48,7 +48,7 @@ func ToGXDType(k dtypes.DType) dtype.DType {
 	case dtypes.Uint64:
 		return dtype.Uint64
 	}
-	return dtype.Invalid
+	return dtype.InvalidDType
 }
 
 // ToDType converts a GX kind into a gopjrt DType.
