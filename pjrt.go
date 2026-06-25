@@ -24,7 +24,7 @@ import (
 
 // Supported are the types supported by this backend.
 type Supported interface {
-	dtype.GoDataType
+	dtype.Supported
 	dtypes.Supported
 }
 
