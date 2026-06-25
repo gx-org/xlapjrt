@@ -29,7 +29,7 @@ type Supported interface {
 }
 
 // ToGXDType converts a gopjrt DType to a GX datatype.
-func ToGXDType(k dtypes.DType) dtype.DataType {
+func ToGXDType(k dtypes.DType) dtype.DType {
 	switch k {
 	case dtypes.Bool:
 		return dtype.Bool
@@ -52,7 +52,7 @@ func ToGXDType(k dtypes.DType) dtype.DataType {
 }
 
 // ToDType converts a GX kind into a gopjrt DType.
-func ToDType(k dtype.DataType) dtypes.DType {
+func ToDType(k dtype.DType) dtypes.DType {
 	switch k {
 	case dtype.Bool:
 		return dtypes.Bool

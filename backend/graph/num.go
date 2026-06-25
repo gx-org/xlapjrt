@@ -46,7 +46,7 @@ func (g *Graph) Iota(shape *shape.Shape, iotaAxis int) (ops.Node, error) {
 }
 
 // ArgMinMax returns a new argmin/argmax node.
-func (g *Graph) ArgMinMax(x ops.Node, axis int, outputDType dtypes.DataType, isMin bool) (ops.Node, error) {
+func (g *Graph) ArgMinMax(x ops.Node, axis int, outputDType dtypes.DType, isMin bool) (ops.Node, error) {
 	xlaOp, err := xlabuilder.ArgMinMax(g.xlaHandle(x), axis, pjrtgx.ToDType(outputDType), isMin)
 	if err != nil {
 		return nil, err

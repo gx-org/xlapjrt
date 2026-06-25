@@ -419,7 +419,7 @@ func (g *Graph) Reshape(x ops.Node, axisLengths []int) (ops.Node, error) {
 }
 
 // Cast returns a cast/convert operator node.
-func (g *Graph) Cast(x ops.Node, target dtype.DataType) (ops.Node, error) {
+func (g *Graph) Cast(x ops.Node, target dtype.DType) (ops.Node, error) {
 	xlaDType := pjrtgx.ToDType(target)
 	if xlaDType == dtypes.InvalidDType {
 		return nil, errors.Errorf("cannot convert %s to a XLA data type", target.String())
