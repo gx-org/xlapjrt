@@ -17,6 +17,7 @@ package graph
 import (
 	"github.com/pkg/errors"
 	"github.com/gomlx/gopjrt/pjrt"
+	"github.com/gx-org/backend/dtypes"
 	"github.com/gx-org/backend/ops"
 	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/backend/shape"
@@ -45,7 +46,11 @@ func bufferShape(buffer *pjrt.Buffer) (*shape.Shape, error) {
 }
 
 func checkShape(got, want *shape.Shape) error {
-	if got.DType != want.DType {
+	gotDType := got.DType
+	if gotDType == dtypes.Int64 && want.DType == dtypes.Int {
+		gotDType = want.DType
+	}
+	if gotDType != want.DType {
 		return errors.Errorf("PJRT backend returned a buffer with a %s data type but GX expects a %s data type", got.DType, want.DType)
 	}
 	if got.Size() != want.Size() {
