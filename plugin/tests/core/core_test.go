@@ -17,6 +17,8 @@ import (
 	"testing"
 
 	"github.com/gx-org/xlapjrt/plugin"
+	"github.com/gx-org/gx/build/builder/testbuild"
+	"github.com/gx-org/gx/internal/testing/testrtm"
 	gxtesting "github.com/gx-org/gx/tests/testing"
 	"github.com/gx-org/gx/tests"
 )
@@ -30,4 +32,17 @@ func TestPJRTCore(t *testing.T) {
 	for _, path := range tests.Language {
 		session.TestFolder(t, path)
 	}
+}
+
+func TestPJRTCoreUnit(t *testing.T) {
+	bck, err := plugin.NewWithBuilder("cpu", tests.CoreBuilder())
+	if err != nil {
+		t.Fatal(err)
+	}
+	testbuild.RunFactory(t, nil,
+		testrtm.Factory(
+			bck,
+			tests.CoreUnits...,
+		),
+	)
 }
