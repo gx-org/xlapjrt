@@ -537,30 +537,46 @@ func (g *Graph) Gather(x ops.Node, startIndices ops.Node, indexVectorAxis int, o
 }
 
 // Set returns a node to set a slice in an array.
-func (g *Graph) Set(x, updates, position ops.Node) (ops.Node, error) {
-	var indexVectorDim int
-
-	updatesShape := updates.(pjrtNode).BackendShape()
-	updateWindowDims := make([]int, len(updatesShape.AxisLengths))
-	for i := range len(updateWindowDims) {
-		updateWindowDims[i] = i
-	}
-	positionShape := position.(pjrtNode).BackendShape()
-	insertedWindowDims := make([]int, positionShape.AxisLengths[0])
-	scatterDimsToOperandDims := make([]int, positionShape.AxisLengths[0])
-	for i := range len(scatterDimsToOperandDims) {
-		insertedWindowDims[i] = i
-		scatterDimsToOperandDims[i] = i
-	}
-
-	const indicesAreSorted, uniqueIndices = true, true
-	xlaOp, err := xlabuilder.ScatterAdd(g.xlaHandle(x), g.xlaHandle(position), g.xlaHandle(updates),
-		indexVectorDim, updateWindowDims, insertedWindowDims, scatterDimsToOperandDims,
-		indicesAreSorted, uniqueIndices)
+func (g *Graph) Set(x, update ops.Node, position []ops.Node) (ops.Node, error) {
+	xOp := g.xlaHandle(x)
+	xShape := xOp.Shape
+	rank := len(xShape.Dimensions)
+	indexDType := g.xlaHandle(position[0]).Shape.DType
+	xlaPos := make([]*xlabuilder.Op, rank)
+	zeroLit, err := xlabuilder.NewScalarLiteralFromFloat64(0.0, indexDType)
 	if err != nil {
 		return nil, err
 	}
-	return g.newNode(xlaOp), nil
+	zeroOp, err := xlabuilder.Constant(g.builder, zeroLit)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < rank; i++ {
+		if i < len(position) {
+			xlaPos[i] = g.xlaHandle(position[i])
+		} else {
+			xlaPos[i] = zeroOp
+		}
+	}
+	updateShape := make([]int, rank)
+	for i := 0; i < rank; i++ {
+		if i < len(position) {
+			updateShape[i] = 1
+		} else {
+			updateShape[i] = xShape.Dimensions[i]
+		}
+	}
+	xlaUpdate := g.xlaHandle(update)
+	xlaUpdateReshaped, err := xlabuilder.Reshape(xlaUpdate, updateShape...)
+	if err != nil {
+		return nil, err
+	}
+
+	xlaRes, err := xlabuilder.DynamicUpdateSlice(xOp, xlaUpdateReshaped, xlaPos)
+	if err != nil {
+		return nil, err
+	}
+	return g.newNode(xlaRes), nil
 }
 
 // DotGeneral returns a generic dot product node. Batch and reduce axes are given as pairs of
