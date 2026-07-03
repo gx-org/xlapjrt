@@ -62,6 +62,8 @@ func ToDType(k dtype.DType) dtypes.DType {
 		return dtypes.Float32
 	case dtype.Float64:
 		return dtypes.Float64
+	case dtype.Int:
+		return dtypes.Int64
 	case dtype.Int32:
 		return dtypes.Int32
 	case dtype.Int64:
