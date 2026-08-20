@@ -289,6 +289,41 @@ func (g *Graph) Constant(buffer platform.HostBuffer) (ops.Node, error) {
 	return g.newNode(op), nil
 }
 
+// NewAtomLiteral creates a node from a constant atom.
+func (g *Graph) NewAtomLiteral(v any) (ops.Node, error) {
+	var lit *xlabuilder.Literal
+	var err error
+	switch vT := v.(type) {
+	case int:
+		lit = xlabuilder.NewScalarLiteral(vT)
+	case bfloat16.BFloat16:
+		lit = xlabuilder.NewScalarLiteral(vT)
+	default:
+		lit, err = xlabuilder.NewScalarLiteralFromAny(vT)
+	}
+	if err != nil {
+		return nil, err
+	}
+	op, err := xlabuilder.Constant(g.builder, lit)
+	if err != nil {
+		return nil, err
+	}
+	return g.newNode(op), nil
+}
+
+// NewArrayLiteral creates a node from a constant array.
+func (g *Graph) NewArrayLiteral(flat any, axlengths ...int) (ops.Node, error) {
+	lit, err := xlabuilder.NewArrayLiteralFromAny(flat, axlengths...)
+	if err != nil {
+		return nil, err
+	}
+	op, err := xlabuilder.Constant(g.builder, lit)
+	if err != nil {
+		return nil, err
+	}
+	return g.newNode(op), nil
+}
+
 // Argument returns a node set by a caller when calling the function.
 func (g *Graph) Argument(name string, shape *shape.Shape, index int) (node ops.Node, err error) {
 	if g.inputs != nil {
