@@ -47,13 +47,8 @@ func (b *pBackend) Platform() platform.Platform {
 	return b.plat
 }
 
-// Builder returns the builder to build GX code for the device.
-func (b *pBackend) Builder() *builder.Builder {
-	return b.bld
-}
-
 // NewGraph returns a new XLA computation graph.
-func (b *pBackend) NewOps(funcName string) (ops.Graph, error) {
+func (b *pBackend) Builder(funcName string) (ops.Graph, error) {
 	return pjrtgraph.New(b.plat, funcName, nil)
 }
 

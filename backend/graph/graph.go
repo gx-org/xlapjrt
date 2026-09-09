@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"google3/third_party/golang/github_com/gomlx/gopjrt/v/v0/dtypes/bfloat16/bfloat16"
+	"github.com/gomlx/gopjrt/dtypes/bfloat16"
 	"github.com/gomlx/gopjrt/dtypes"
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gomlx/gopjrt/xlabuilder"
