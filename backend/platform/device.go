@@ -17,7 +17,7 @@ package platform
 import (
 	"github.com/pkg/errors"
 	"github.com/gomlx/gopjrt/dtypes"
-	"github.com/gx-org/backend/platform"
+	"github.com/gx-org/backend"
 	"github.com/gx-org/backend/shape"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
@@ -29,11 +29,11 @@ type Device struct {
 }
 
 // Platform owning the device.
-func (dev *Device) Platform() platform.Platform {
+func (dev *Device) Platform() backend.Platform {
 	return dev.plat
 }
 
-// Ordinal of the device on the platform.
+// Ordinal of the device on the backend.
 func (dev *Device) Ordinal() int {
 	return dev.ord
 }
@@ -51,13 +51,13 @@ func (dev *Device) send(data []byte, sh *shape.Shape) (*Handle, error) {
 	return NewHandle(dev, buffer, sh)
 }
 
-func (dev *Device) sendFromHost(handle platform.HostBuffer) (*Handle, error) {
+func (dev *Device) sendFromHost(handle backend.HostBuffer) (*Handle, error) {
 	data := handle.Acquire()
 	defer handle.Release()
 	return dev.send(data, handle.Shape())
 }
 
 // Send raw data to the device.
-func (dev *Device) Send(data []byte, sh *shape.Shape) (platform.DeviceHandle, error) {
+func (dev *Device) Send(data []byte, sh *shape.Shape) (backend.DeviceHandle, error) {
 	return dev.send(data, sh)
 }

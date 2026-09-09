@@ -18,18 +18,18 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gomlx/gopjrt/dtypes"
 	"github.com/gomlx/gopjrt/xlabuilder"
+	"github.com/gx-org/backend"
 	dtype "github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/ops"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
 // DType returns the builder to build operations from the dtype package.
-func (g *Graph) DType() ops.DTypeBuilder {
+func (g *Graph) DType() backend.DTypeBuilder {
 	return g
 }
 
 // Bitcast returns a bitcast/reinterpret operator node.
-func (g *Graph) Bitcast(x ops.Node, target dtype.DType) (ops.Node, error) {
+func (g *Graph) Bitcast(x backend.Node, target dtype.DType) (backend.Node, error) {
 	xlaDType := pjrtgx.ToDType(target)
 	if xlaDType == dtypes.InvalidDType {
 		return nil, errors.Errorf("cannot convert %s to a XLA data type", target.String())

@@ -17,16 +17,16 @@ package graph
 import (
 	"github.com/pkg/errors"
 	"github.com/gomlx/gopjrt/xlabuilder"
-	"github.com/gx-org/backend/ops"
+	"github.com/gx-org/backend"
 )
 
 // Shape returns the builder to build operations from the shape package.
-func (g *Graph) Shape() ops.ShapeBuilder {
+func (g *Graph) Shape() backend.ShapeBuilder {
 	return g
 }
 
 // Split implements the split operation in terms of slice, with static indices.
-func (g *Graph) Split(x ops.Node, axis int, numSplits int) (ops.Node, error) {
+func (g *Graph) Split(x backend.Node, axis int, numSplits int) (backend.Node, error) {
 	shap := x.(pjrtNode).BackendShape()
 	rank := len(shap.AxisLengths)
 
@@ -37,7 +37,7 @@ func (g *Graph) Split(x ops.Node, axis int, numSplits int) (ops.Node, error) {
 		return nil, errors.Errorf("axis %d has size %d which is not divisible by %d numSplits", axis, shap.AxisLengths[axis], numSplits)
 	}
 	stride := shap.AxisLengths[axis] / numSplits
-	slicedNodes := make([]ops.Node, numSplits)
+	slicedNodes := make([]backend.Node, numSplits)
 	for i := range numSplits {
 		starts := make([]int, rank)
 		limits := make([]int, rank)
@@ -60,7 +60,7 @@ func (g *Graph) Split(x ops.Node, axis int, numSplits int) (ops.Node, error) {
 	outputDims := append([]int{1}, shap.AxisLengths...)
 	outputDims[axis+1] = stride
 
-	reshapedNodes := make([]ops.Node, numSplits)
+	reshapedNodes := make([]backend.Node, numSplits)
 	for i := range slicedNodes {
 		reshapedNode, err := g.Reshape(slicedNodes[i], outputDims)
 		if err != nil {
@@ -73,7 +73,7 @@ func (g *Graph) Split(x ops.Node, axis int, numSplits int) (ops.Node, error) {
 }
 
 // Concat concatenates multiple arrays into a single array.
-func (g *Graph) Concat(axis int, nodes []ops.Node) (ops.Node, error) {
+func (g *Graph) Concat(axis int, nodes []backend.Node) (backend.Node, error) {
 	inputs, err := g.xlaHandles(nodes)
 	if err != nil {
 		return nil, err

@@ -18,8 +18,6 @@ package backend
 import (
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gx-org/backend"
-	"github.com/gx-org/backend/ops"
-	"github.com/gx-org/backend/platform"
 	"github.com/gx-org/gx/build/builder"
 	pjrtgraph "github.com/gx-org/xlapjrt/backend/graph"
 	pjrtplatform "github.com/gx-org/xlapjrt/backend/platform"
@@ -43,12 +41,12 @@ func New(builder *builder.Builder, plugin *pjrt.Plugin) (backend.Backend, error)
 }
 
 // Platform used by the backend.
-func (b *pBackend) Platform() platform.Platform {
+func (b *pBackend) Platform() backend.Platform {
 	return b.plat
 }
 
 // NewGraph returns a new XLA computation graph.
-func (b *pBackend) Builder(funcName string) (ops.Graph, error) {
+func (b *pBackend) Builder(funcName string) (backend.Graph, error) {
 	return pjrtgraph.New(b.plat, funcName, nil)
 }
 

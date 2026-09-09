@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gomlx/gopjrt/xlabuilder"
-	"github.com/gx-org/backend/platform"
+	"github.com/gx-org/backend"
 	"github.com/gx-org/backend/shape"
 )
 
@@ -38,7 +38,7 @@ type (
 	}
 )
 
-var _ platform.DeviceHandle = (*Handle)(nil)
+var _ backend.DeviceHandle = (*Handle)(nil)
 
 // NewHandle returns a new platform handle given a PJRT buffer.
 func NewHandle(dev *Device, buffer *pjrt.Buffer, sh *shape.Shape) (*Handle, error) {
@@ -60,7 +60,7 @@ func (h *Handle) OnDeviceBuffer() *pjrt.Buffer {
 }
 
 // ToDevice transfers the handle to a device.
-func (h *Handle) ToDevice(dev platform.Device) (platform.DeviceHandle, error) {
+func (h *Handle) ToDevice(dev backend.Device) (backend.DeviceHandle, error) {
 	pjrtDev, ok := dev.(*Device)
 	if ok {
 		return ToDevice(pjrtDev, h)
@@ -80,14 +80,14 @@ func (h *Handle) toDevice(dev *Device) (*Handle, error) {
 }
 
 // ToHost fetches the data from the handle and write it to buffer.
-func (h *Handle) ToHost(buf platform.HostBuffer) error {
+func (h *Handle) ToHost(buf backend.HostBuffer) error {
 	data := buf.Acquire()
 	defer buf.Release()
 	return h.buffer.ToHost(data)
 }
 
 // Device on which the array is located.
-func (h *Handle) Device() platform.Device {
+func (h *Handle) Device() backend.Device {
 	return h.device
 }
 
@@ -97,11 +97,11 @@ func (h *Handle) String() string {
 }
 
 // ToDevice sends a generic handle to a device.
-func ToDevice(dev *Device, handle platform.Handle) (*Handle, error) {
+func ToDevice(dev *Device, handle backend.Handle) (*Handle, error) {
 	switch handleT := handle.(type) {
 	case *Handle:
 		return handleT.toDevice(dev)
-	case platform.HostBuffer:
+	case backend.HostBuffer:
 		return dev.sendFromHost(handleT)
 	}
 	return nil, errors.Errorf("not implemented")
