@@ -159,11 +159,6 @@ func (g *Graph) Graph() backend.Function {
 	return g
 }
 
-// Core returns the builder to build core operations.
-func (g *Graph) Core() backend.CoreBuilder {
-	return g
-}
-
 // Executable returns the PJRT executable.
 func (g *Graph) Executable() *pjrt.LoadedExecutable {
 	return g.executable
