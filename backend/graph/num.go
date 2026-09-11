@@ -22,11 +22,6 @@ import (
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
-// Num returns the builder to build operations from the num package.
-func (g *Graph) Num() backend.NumBuilder {
-	return g
-}
-
 // Dot product between x and y.
 func (g *Graph) Dot(x, y backend.Node) (backend.Node, error) {
 	xlaOp, err := xlabuilder.Dot(g.xlaHandle(x), g.xlaHandle(y))
