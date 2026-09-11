@@ -58,15 +58,15 @@ type (
 )
 
 var (
-	_ backend.Graph = (*Graph)(nil)
+	_ backend.Function = (*Graph)(nil)
 )
 
 // New returns a new graph.
-func New(plat *pjrtplatform.Platform, funcName string, shapes []*shape.Shape) (backend.Graph, error) {
+func New(plat *pjrtplatform.Platform, funcName string, shapes []*shape.Shape) (backend.Function, error) {
 	return newGraph(plat, shapes, xlabuilder.New(funcName))
 }
 
-func newGraph(plat *pjrtplatform.Platform, shapes []*shape.Shape, builder *xlabuilder.XlaBuilder) (backend.Graph, error) {
+func newGraph(plat *pjrtplatform.Platform, shapes []*shape.Shape, builder *xlabuilder.XlaBuilder) (backend.Function, error) {
 	g := &Graph{
 		plat:    plat,
 		builder: builder,
@@ -155,7 +155,7 @@ func (g *Graph) Platform() backend.Platform {
 }
 
 // Graph in which nodes are created.
-func (g *Graph) Graph() backend.Graph {
+func (g *Graph) Graph() backend.Function {
 	return g
 }
 
@@ -203,7 +203,7 @@ func (n *Node) Info(format string, a ...any) *Node {
 }
 
 // Graph to which the node belongs to.
-func (n *Node) Graph() backend.Graph {
+func (n *Node) Graph() backend.Function {
 	return n.graph
 }
 
@@ -649,7 +649,7 @@ func (g *Graph) Call(sg *backend.Subgraph, args ...backend.Node) (backend.Node, 
 }
 
 // Subgraph returns a Graph instance that maps to a new subgraph.
-func (g *Graph) Subgraph(name string, inputs []*shape.Shape) (backend.Graph, error) {
+func (g *Graph) Subgraph(name string, inputs []*shape.Shape) (backend.Function, error) {
 	subName := g.builder.Name() + "." + name
 	builder := g.builder.CreateSubBuilder(subName)
 	return newGraph(g.plat, inputs, builder)
@@ -673,7 +673,7 @@ func (g *Graph) xlaSubcomputation(sg *backend.Subgraph) (*subGraph, error) {
 	return sub, nil
 }
 
-func (sub *subGraph) Graph() backend.Graph {
+func (sub *subGraph) Graph() backend.Function {
 	return sub.graph
 }
 

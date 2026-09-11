@@ -46,7 +46,7 @@ func (b *pBackend) Platform() backend.Platform {
 }
 
 // NewGraph returns a new XLA computation graph.
-func (b *pBackend) Builder(funcName string) (backend.Graph, error) {
+func (b *pBackend) Builder(funcName string) (backend.Function, error) {
 	return pjrtgraph.New(b.plat, funcName, nil)
 }
 
@@ -56,8 +56,8 @@ func (b *pBackend) Client() *pjrt.Client {
 }
 
 // Release the backend.
-func (b *pBackend) Release() error {
-	err := b.plat.Release()
+func (b *pBackend) Finalize() error {
+	err := b.plat.Finalize()
 	b.plat = nil
 	return err
 }

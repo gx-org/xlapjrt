@@ -50,9 +50,9 @@ func (plat *Platform) Client() *pjrt.Client {
 	return plat.clt
 }
 
-// Release everything linked to the backend.
+// Finalize everything linked to the backend.
 // It is invalid to use any device from the platform after this call.
-func (plat *Platform) Release() error {
+func (plat *Platform) Finalize() error {
 	return plat.clt.Destroy()
 }
 
