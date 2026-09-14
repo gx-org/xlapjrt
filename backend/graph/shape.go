@@ -20,11 +20,6 @@ import (
 	"github.com/gx-org/backend"
 )
 
-// Shape returns the builder to build operations from the shape package.
-func (g *Graph) Shape() backend.ShapeBuilder {
-	return g
-}
-
 // Split implements the split operation in terms of slice, with static indices.
 func (g *Graph) Split(x backend.Node, axis int, numSplits int) (backend.Node, error) {
 	shap := x.(pjrtNode).BackendShape()
