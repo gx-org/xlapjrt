@@ -19,11 +19,6 @@ import (
 	"github.com/gx-org/backend"
 )
 
-// Math returns the builder to build operations from the math package.
-func (g *Graph) Math() backend.MathBuilder {
-	return g
-}
-
 // Abs returns the absolute value of x.
 func (g *Graph) Abs(x backend.Node) (backend.Node, error) {
 	return g.UnaryFunc(x, xlabuilder.Abs)
