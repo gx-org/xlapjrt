@@ -23,11 +23,6 @@ import (
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
-// DType returns the builder to build operations from the dtype package.
-func (g *Graph) DType() backend.DTypeBuilder {
-	return g
-}
-
 // Bitcast returns a bitcast/reinterpret operator node.
 func (g *Graph) Bitcast(x backend.Node, target dtype.DType) (backend.Node, error) {
 	xlaDType := pjrtgx.ToDType(target)
