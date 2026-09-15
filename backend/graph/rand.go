@@ -21,11 +21,6 @@ import (
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
-// Random returns the builder for the rand package.
-func (g *Graph) Random() backend.RandomBuilder {
-	return g
-}
-
 // RngBitGenerator takes RNG state and generates the given shape filled with random values, and
 // returns the new state plus generated values.
 func (g *Graph) RngBitGenerator(state backend.Node, shape *shape.Shape) (backend.Node, backend.Node, error) {
