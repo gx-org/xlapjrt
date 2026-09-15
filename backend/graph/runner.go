@@ -78,7 +78,7 @@ func toHandles(dev *pjrtplatform.Device, buffers []*pjrt.Buffer, shapes []*shape
 }
 
 // newNodeRunner returns a new node runner given a function and a graph.
-func (graph *Graph) newNodeRunner(dev *pjrtplatform.Device) backend.Runner {
+func (graph *Graph) newNodeRunner(dev *pjrtplatform.Device) backend.Executable {
 	return &nodeRunner{device: dev, graph: graph}
 }
 func (r *nodeRunner) Run(args []backend.Handle) (out, traced []backend.DeviceHandle, err error) {

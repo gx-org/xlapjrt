@@ -119,7 +119,7 @@ func unpackOutput(outs []*backend.OutputNode) ([]backend.Node, []*shape.Shape) {
 
 // Compile a node given a set of parameters and using this node as an output.
 // Returns a function that will be run on a device given some inputs.
-func (g *Graph) Compile(dev backend.Device, out, traced []*backend.OutputNode, params []*shape.Shape) (backend.Runner, error) {
+func (g *Graph) Compile(dev backend.Device, out, traced []*backend.OutputNode, params []*shape.Shape) (backend.Executable, error) {
 	var outNodes, tracedNodes []backend.Node
 	outNodes, g.out = unpackOutput(out)
 	tracedNodes, g.traced = unpackOutput(traced)
