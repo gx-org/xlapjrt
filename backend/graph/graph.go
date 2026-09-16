@@ -62,11 +62,11 @@ var (
 )
 
 // New returns a new graph.
-func New(plat *pjrtplatform.Platform, funcName string, shapes []*shape.Shape) (backend.Function, error) {
+func New(plat *pjrtplatform.Platform, funcName string, shapes []*shape.Shape) (*Graph, error) {
 	return newGraph(plat, shapes, xlabuilder.New(funcName))
 }
 
-func newGraph(plat *pjrtplatform.Platform, shapes []*shape.Shape, builder *xlabuilder.XlaBuilder) (backend.Function, error) {
+func newGraph(plat *pjrtplatform.Platform, shapes []*shape.Shape, builder *xlabuilder.XlaBuilder) (*Graph, error) {
 	g := &Graph{
 		plat:    plat,
 		builder: builder,

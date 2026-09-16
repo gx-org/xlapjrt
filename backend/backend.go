@@ -16,10 +16,9 @@
 package backend
 
 import (
-	"errors"
-
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gx-org/backend"
+	"github.com/gx-org/backend/shape"
 	"github.com/gx-org/gx/build/builder"
 	pjrtgraph "github.com/gx-org/xlapjrt/backend/graph"
 	pjrtplatform "github.com/gx-org/xlapjrt/backend/platform"
@@ -33,7 +32,7 @@ type (
 
 	builderImpl struct {
 		name string
-		main backend.Function
+		main *pjrtgraph.Graph
 	}
 )
 
@@ -47,9 +46,8 @@ func (b *builderImpl) Main() backend.Function {
 	return b.main
 }
 
-func (b *builderImpl) Compile() (backend.Executable, error) {
-	// TODO(degris): Implement computation compilation into an Executable.
-	return nil, errors.New("builder.Compile not implemented yet")
+func (b *builderImpl) Compile(dev backend.Device, output, traced []*backend.OutputNode, params []*shape.Shape) (backend.Executable, error) {
+	return b.main.Compile(dev, output, traced, params)
 }
 
 // New returns a new PJRT backend.
