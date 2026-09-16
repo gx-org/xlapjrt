@@ -24,7 +24,7 @@ import (
 )
 
 // Bitcast returns a bitcast/reinterpret operator node.
-func (g *Graph) Bitcast(x backend.Node, target dtype.DType) (backend.Node, error) {
+func (g *Graph) Bitcast(x backend.Value, target dtype.DType) (backend.Value, error) {
 	xlaDType := pjrtgx.ToDType(target)
 	if xlaDType == dtypes.InvalidDType {
 		return nil, errors.Errorf("cannot convert %s to a XLA data type", target.String())

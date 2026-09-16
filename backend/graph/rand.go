@@ -23,7 +23,7 @@ import (
 
 // RngBitGenerator takes RNG state and generates the given shape filled with random values, and
 // returns the new state plus generated values.
-func (g *Graph) RngBitGenerator(state backend.Node, shape *shape.Shape) (backend.Node, backend.Node, error) {
+func (g *Graph) RngBitGenerator(state backend.Value, shape *shape.Shape) (backend.Value, backend.Value, error) {
 	newState, values, err := xlabuilder.RngBitGenerator(g.xlaHandle(state), pjrtgx.ToShape(shape))
 	if err != nil {
 		return nil, nil, err

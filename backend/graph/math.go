@@ -20,96 +20,96 @@ import (
 )
 
 // Abs returns the absolute value of x.
-func (g *Graph) Abs(x backend.Node) (backend.Node, error) {
+func (g *Graph) Abs(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Abs)
 }
 
 // Ceil returns the ceiling of x.
-func (g *Graph) Ceil(x backend.Node) (backend.Node, error) {
+func (g *Graph) Ceil(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Ceil)
 }
 
 // Cos returns a node computing the cosine.
-func (g *Graph) Cos(x backend.Node) (backend.Node, error) {
+func (g *Graph) Cos(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Cos)
 }
 
 // Erf returns the error function of x.
-func (g *Graph) Erf(x backend.Node) (backend.Node, error) {
+func (g *Graph) Erf(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Erf)
 }
 
 // Exp returns the computation for the exponential.
-func (g *Graph) Exp(x backend.Node) (backend.Node, error) {
+func (g *Graph) Exp(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Exp)
 }
 
 // Expm1 returns Exp(x)-1.
-func (g *Graph) Expm1(x backend.Node) (backend.Node, error) {
+func (g *Graph) Expm1(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Expm1)
 }
 
 // Floor returns the floor of x.
-func (g *Graph) Floor(x backend.Node) (backend.Node, error) {
+func (g *Graph) Floor(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Floor)
 }
 
 // Log returns the natural logarithm of x.
-func (g *Graph) Log(x backend.Node) (backend.Node, error) {
+func (g *Graph) Log(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Log)
 }
 
 // Log1p returns log(1+x).
-func (g *Graph) Log1p(x backend.Node) (backend.Node, error) {
+func (g *Graph) Log1p(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Log1p)
 }
 
 // Logistic returns 1/(1+exp(-x)).
-func (g *Graph) Logistic(x backend.Node) (backend.Node, error) {
+func (g *Graph) Logistic(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Logistic)
 }
 
 // Min returns the minimum between x and y.
-func (g *Graph) Min(x, y backend.Node) (backend.Node, error) {
+func (g *Graph) Min(x, y backend.Value) (backend.Value, error) {
 	return g.BinaryFunc(x, y, xlabuilder.Min)
 }
 
 // Max returns the maximum between x and y.
-func (g *Graph) Max(x, y backend.Node) (backend.Node, error) {
+func (g *Graph) Max(x, y backend.Value) (backend.Value, error) {
 	return g.BinaryFunc(x, y, xlabuilder.Max)
 }
 
 // Pow returns x to the power of y.
-func (g *Graph) Pow(x, y backend.Node) (backend.Node, error) {
+func (g *Graph) Pow(x, y backend.Value) (backend.Value, error) {
 	return g.BinaryFunc(x, y, xlabuilder.Pow)
 }
 
 // Round returns the nearest integer of x.
-func (g *Graph) Round(x backend.Node) (backend.Node, error) {
+func (g *Graph) Round(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Round)
 }
 
 // Rsqrt returns 1/sqrt(x).
-func (g *Graph) Rsqrt(x backend.Node) (backend.Node, error) {
+func (g *Graph) Rsqrt(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Rsqrt)
 }
 
 // Sign returns the sign of x.
-func (g *Graph) Sign(x backend.Node) (backend.Node, error) {
+func (g *Graph) Sign(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Sign)
 }
 
 // Sin returns a node computing the sine.
-func (g *Graph) Sin(x backend.Node) (backend.Node, error) {
+func (g *Graph) Sin(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Sin)
 }
 
 // Sqrt returns sqrt(x).
-func (g *Graph) Sqrt(x backend.Node) (backend.Node, error) {
+func (g *Graph) Sqrt(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Sqrt)
 }
 
 // Tanh returns a node computing the hyperbolic tangent.
-func (g *Graph) Tanh(x backend.Node) (backend.Node, error) {
+func (g *Graph) Tanh(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Tanh)
 }

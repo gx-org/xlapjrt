@@ -21,7 +21,7 @@ import (
 )
 
 // Split implements the split operation in terms of slice, with static indices.
-func (g *Graph) Split(x backend.Node, axis int, numSplits int) (backend.Node, error) {
+func (g *Graph) Split(x backend.Value, axis int, numSplits int) (backend.Value, error) {
 	shap := x.(pjrtNode).BackendShape()
 	rank := len(shap.AxisLengths)
 
@@ -32,7 +32,7 @@ func (g *Graph) Split(x backend.Node, axis int, numSplits int) (backend.Node, er
 		return nil, errors.Errorf("axis %d has size %d which is not divisible by %d numSplits", axis, shap.AxisLengths[axis], numSplits)
 	}
 	stride := shap.AxisLengths[axis] / numSplits
-	slicedNodes := make([]backend.Node, numSplits)
+	slicedNodes := make([]backend.Value, numSplits)
 	for i := range numSplits {
 		starts := make([]int, rank)
 		limits := make([]int, rank)
@@ -55,7 +55,7 @@ func (g *Graph) Split(x backend.Node, axis int, numSplits int) (backend.Node, er
 	outputDims := append([]int{1}, shap.AxisLengths...)
 	outputDims[axis+1] = stride
 
-	reshapedNodes := make([]backend.Node, numSplits)
+	reshapedNodes := make([]backend.Value, numSplits)
 	for i := range slicedNodes {
 		reshapedNode, err := g.Reshape(slicedNodes[i], outputDims)
 		if err != nil {
@@ -68,7 +68,7 @@ func (g *Graph) Split(x backend.Node, axis int, numSplits int) (backend.Node, er
 }
 
 // Concat concatenates multiple arrays into a single array.
-func (g *Graph) Concat(axis int, nodes []backend.Node) (backend.Node, error) {
+func (g *Graph) Concat(axis int, nodes []backend.Value) (backend.Value, error) {
 	inputs, err := g.xlaHandles(nodes)
 	if err != nil {
 		return nil, err
