@@ -17,8 +17,6 @@ package graph
 
 import (
 	"fmt"
-	"go/ast"
-	"go/token"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -373,61 +371,105 @@ func (g *Graph) Neg(x backend.Value) (backend.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Neg)
 }
 
-// Binary returns a node applying a binary operator between two nodes.
-func (g *Graph) Binary(op *ast.BinaryExpr, x, y backend.Value) (backend.Value, error) {
+// Add returns a node adding two nodes.
+func (g *Graph) Add(x, y backend.Value) (backend.Value, error) {
+	return g.BinaryFunc(x, y, xlabuilder.Add)
+}
+
+// Sub returns a node subtracting y from x.
+func (g *Graph) Sub(x, y backend.Value) (backend.Value, error) {
+	return g.BinaryFunc(x, y, xlabuilder.Sub)
+}
+
+// Mul returns a node multiplying two nodes.
+func (g *Graph) Mul(x, y backend.Value) (backend.Value, error) {
+	return g.BinaryFunc(x, y, xlabuilder.Mul)
+}
+
+// Div returns a node dividing x by y.
+func (g *Graph) Div(x, y backend.Value) (backend.Value, error) {
+	return g.BinaryFunc(x, y, xlabuilder.Div)
+}
+
+// Rem returns a node computing remainder of x divided by y.
+func (g *Graph) Rem(x, y backend.Value) (backend.Value, error) {
+	return g.BinaryFunc(x, y, xlabuilder.Rem)
+}
+
+// Equal returns a boolean node checking if x == y.
+func (g *Graph) Equal(x, y backend.Value) (backend.Value, error) {
 	// TODO(paulchang): If both operands are floating-point, use TotalOrder comparisons.
-	var xlaOp *xlabuilder.Op
-	var err error
-	switch op.Op {
-	case token.ADD:
-		xlaOp, err = xlabuilder.Add(g.xlaHandle(x), g.xlaHandle(y))
-	case token.SUB:
-		xlaOp, err = xlabuilder.Sub(g.xlaHandle(x), g.xlaHandle(y))
-	case token.MUL:
-		xlaOp, err = xlabuilder.Mul(g.xlaHandle(x), g.xlaHandle(y))
-	case token.QUO:
-		xlaOp, err = xlabuilder.Div(g.xlaHandle(x), g.xlaHandle(y))
-	case token.EQL:
-		xlaOp, err = xlabuilder.Equal(g.xlaHandle(x), g.xlaHandle(y))
-	case token.GTR:
-		xlaOp, err = xlabuilder.GreaterThan(g.xlaHandle(x), g.xlaHandle(y))
-	case token.LSS:
-		xlaOp, err = xlabuilder.LessThan(g.xlaHandle(x), g.xlaHandle(y))
-	case token.NEQ:
-		xlaOp, err = xlabuilder.NotEqual(g.xlaHandle(x), g.xlaHandle(y))
-	case token.LEQ:
-		xlaOp, err = xlabuilder.LessOrEqual(g.xlaHandle(x), g.xlaHandle(y))
-	case token.GEQ:
-		xlaOp, err = xlabuilder.GreaterOrEqual(g.xlaHandle(x), g.xlaHandle(y))
-	case token.REM:
-		xlaOp, err = xlabuilder.Rem(g.xlaHandle(x), g.xlaHandle(y))
-	case token.SHR:
-		// We copy Go's behavior: "shift operators implement arithmetic shifts if the left operand is a
-		// signed integer and logical shifts if it is an unsigned integer".
-		if g.xlaHandle(x).Shape.DType.IsUnsigned() {
-			xlaOp, err = xlabuilder.ShiftRightLogical(g.xlaHandle(x), g.xlaHandle(y))
-		} else {
-			xlaOp, err = xlabuilder.ShiftRightArithmetic(g.xlaHandle(x), g.xlaHandle(y))
-		}
-	case token.SHL:
-		xlaOp, err = xlabuilder.ShiftLeft(g.xlaHandle(x), g.xlaHandle(y))
-	case token.AND:
-		xlaOp, err = xlabuilder.BitwiseAnd(g.xlaHandle(x), g.xlaHandle(y))
-	case token.OR:
-		xlaOp, err = xlabuilder.BitwiseOr(g.xlaHandle(x), g.xlaHandle(y))
-	case token.XOR:
-		xlaOp, err = xlabuilder.BitwiseXor(g.xlaHandle(x), g.xlaHandle(y))
-	case token.LAND:
-		xlaOp, err = xlabuilder.LogicalAnd(g.xlaHandle(x), g.xlaHandle(y))
-	case token.LOR:
-		xlaOp, err = xlabuilder.LogicalOr(g.xlaHandle(x), g.xlaHandle(y))
-	default:
-		return nil, errors.Errorf("operator %s not supported", op.Op)
+	return g.BinaryFunc(x, y, xlabuilder.Equal)
+}
+
+// NotEqual returns a boolean node checking if x != y.
+func (g *Graph) NotEqual(x, y backend.Value) (backend.Value, error) {
+	// TODO(paulchang): If both operands are floating-point, use TotalOrder comparisons.
+	return g.BinaryFunc(x, y, xlabuilder.NotEqual)
+}
+
+// LessThan returns a boolean node checking if x < y.
+func (g *Graph) LessThan(x, y backend.Value) (backend.Value, error) {
+	// TODO(paulchang): If both operands are floating-point, use TotalOrder comparisons.
+	return g.BinaryFunc(x, y, xlabuilder.LessThan)
+}
+
+// LessOrEqual returns a boolean node checking if x <= y.
+func (g *Graph) LessOrEqual(x, y backend.Value) (backend.Value, error) {
+	// TODO(paulchang): If both operands are floating-point, use TotalOrder comparisons.
+	return g.BinaryFunc(x, y, xlabuilder.LessOrEqual)
+}
+
+// GreaterThan returns a boolean node checking if x > y.
+func (g *Graph) GreaterThan(x, y backend.Value) (backend.Value, error) {
+	// TODO(paulchang): If both operands are floating-point, use TotalOrder comparisons.
+	return g.BinaryFunc(x, y, xlabuilder.GreaterThan)
+}
+
+// GreaterOrEqual returns a boolean node checking if x >= y.
+func (g *Graph) GreaterOrEqual(x, y backend.Value) (backend.Value, error) {
+	// TODO(paulchang): If both operands are floating-point, use TotalOrder comparisons.
+	return g.BinaryFunc(x, y, xlabuilder.GreaterOrEqual)
+}
+
+// ShiftLeft returns a node shifting x left by y.
+func (g *Graph) ShiftLeft(x, y backend.Value) (backend.Value, error) {
+	return g.BinaryFunc(x, y, xlabuilder.ShiftLeft)
+}
+
+// ShiftRight returns a node shifting x right by y.
+func (g *Graph) ShiftRight(x, y backend.Value) (backend.Value, error) {
+	// We copy Go's behavior: "shift operators implement arithmetic shifts if the left operand is a
+	// signed integer and logical shifts if it is an unsigned integer".
+	if g.xlaHandle(x).Shape.DType.IsUnsigned() {
+		return g.BinaryFunc(x, y, xlabuilder.ShiftRightLogical)
 	}
-	if err != nil {
-		return nil, fmt.Errorf("%v error: %w", g, err)
-	}
-	return g.newNode(xlaOp, x, y), nil
+	return g.BinaryFunc(x, y, xlabuilder.ShiftRightArithmetic)
+}
+
+// BitwiseAnd returns a node computing bitwise AND of x and y.
+func (g *Graph) BitwiseAnd(x, y backend.Value) (backend.Value, error) {
+	return g.BinaryFunc(x, y, xlabuilder.BitwiseAnd)
+}
+
+// BitwiseOr returns a node computing bitwise OR of x and y.
+func (g *Graph) BitwiseOr(x, y backend.Value) (backend.Value, error) {
+	return g.BinaryFunc(x, y, xlabuilder.BitwiseOr)
+}
+
+// BitwiseXor returns a node computing bitwise XOR of x and y.
+func (g *Graph) BitwiseXor(x, y backend.Value) (backend.Value, error) {
+	return g.BinaryFunc(x, y, xlabuilder.BitwiseXor)
+}
+
+// LogicalAnd returns a node computing logical AND of x and y.
+func (g *Graph) LogicalAnd(x, y backend.Value) (backend.Value, error) {
+	return g.BinaryFunc(x, y, xlabuilder.LogicalAnd)
+}
+
+// LogicalOr returns a node computing logical OR of x and y.
+func (g *Graph) LogicalOr(x, y backend.Value) (backend.Value, error) {
+	return g.BinaryFunc(x, y, xlabuilder.LogicalOr)
 }
 
 // Reshape returns a reshape operator node.
