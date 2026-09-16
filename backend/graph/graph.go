@@ -363,24 +363,14 @@ func (g *Graph) ReduceFunc(x backend.Value, axes []int, f func(*xlabuilder.Op, .
 	return g.newNode(xlaOp), nil
 }
 
-// Unary returns a node applying a unary operator to a node.
-func (g *Graph) Unary(op *ast.UnaryExpr, x backend.Value) (backend.Value, error) {
-	var xlaOp *xlabuilder.Op
-	var err error
-	switch op.Op {
-	case token.ADD:
-		return x, nil
-	case token.SUB:
-		xlaOp, err = xlabuilder.Neg(g.xlaHandle(x))
-	case token.NOT:
-		xlaOp, err = xlabuilder.LogicalNot(g.xlaHandle(x))
-	default:
-		return nil, errors.Errorf("operator %s not supported", op.Op)
-	}
-	if err != nil {
-		return nil, err
-	}
-	return g.newNode(xlaOp), nil
+// LogicalNot returns a node computing the logical not of x.
+func (g *Graph) LogicalNot(x backend.Value) (backend.Value, error) {
+	return g.UnaryFunc(x, xlabuilder.LogicalNot)
+}
+
+// Neg returns a node computing the negation of x.
+func (g *Graph) Neg(x backend.Value) (backend.Value, error) {
+	return g.UnaryFunc(x, xlabuilder.Neg)
 }
 
 // Binary returns a node applying a binary operator between two nodes.
