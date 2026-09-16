@@ -16,6 +16,8 @@
 package backend
 
 import (
+	"errors"
+
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gx-org/backend"
 	"github.com/gx-org/gx/build/builder"
@@ -23,9 +25,31 @@ import (
 	pjrtplatform "github.com/gx-org/xlapjrt/backend/platform"
 )
 
-type pBackend struct {
-	plat *pjrtplatform.Platform
-	bld  *builder.Builder
+type (
+	pBackend struct {
+		plat *pjrtplatform.Platform
+		bld  *builder.Builder
+	}
+
+	builderImpl struct {
+		name string
+		main backend.Function
+	}
+)
+
+var _ backend.Builder = (*builderImpl)(nil)
+
+func (b *builderImpl) Name() string {
+	return b.name
+}
+
+func (b *builderImpl) Main() backend.Function {
+	return b.main
+}
+
+func (b *builderImpl) Compile() (backend.Executable, error) {
+	// TODO(degris): Implement computation compilation into an Executable.
+	return nil, errors.New("builder.Compile not implemented yet")
 }
 
 // New returns a new PJRT backend.
@@ -45,9 +69,16 @@ func (b *pBackend) Platform() backend.Platform {
 	return b.plat
 }
 
-// NewGraph returns a new XLA computation graph.
-func (b *pBackend) Builder(funcName string) (backend.Function, error) {
-	return pjrtgraph.New(b.plat, funcName, nil)
+// Builder returns a new XLA computation builder.
+func (b *pBackend) Builder(funcName string) (backend.Builder, error) {
+	fn, err := pjrtgraph.New(b.plat, funcName, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &builderImpl{
+		name: funcName,
+		main: fn,
+	}, nil
 }
 
 // Client returns the PJRT client of the backend.
