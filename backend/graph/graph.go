@@ -117,7 +117,7 @@ func unpackOutput(outs []*backend.OutputNode) ([]backend.Value, []*shape.Shape) 
 
 // Compile a node given a set of parameters and using this node as an output.
 // Returns a function that will be run on a device given some inputs.
-func (g *Graph) Compile(dev backend.Device, out, traced []*backend.OutputNode, params []*shape.Shape) (backend.Executable, error) {
+func (g *Graph) Compile(dev backend.DeviceNum, out, traced []*backend.OutputNode, params []*shape.Shape) (backend.Executable, error) {
 	var outNodes, tracedNodes []backend.Value
 	outNodes, g.out = unpackOutput(out)
 	tracedNodes, g.traced = unpackOutput(traced)
@@ -134,7 +134,7 @@ func (g *Graph) Compile(dev backend.Device, out, traced []*backend.OutputNode, p
 	if err != nil {
 		return nil, errors.Errorf("cannot compile graph node %T for function %s: %v", all, g.builder.Name(), err)
 	}
-	return g.newNodeRunner(dev.(*pjrtplatform.Device)), nil
+	return g.newNodeRunner(dev), nil
 }
 
 // OutShapes returns the expected shapes of the out nodes.

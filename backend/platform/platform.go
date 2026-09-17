@@ -18,19 +18,17 @@ package platform
 import (
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gx-org/backend"
+	"github.com/gx-org/backend/shape"
 )
 
 // Platform is the PJRT backend.
 type Platform struct {
-	clt    *pjrt.Client
-	device *Device
+	clt *pjrt.Client
 }
 
 // New PJRT backend.
 func New(clt *pjrt.Client) *Platform {
-	plat := &Platform{clt: clt}
-	plat.device = &Device{plat: plat}
-	return plat
+	return &Platform{clt: clt}
 }
 
 // Name of the backend.
@@ -38,11 +36,9 @@ func (plat *Platform) Name() string {
 	return "pjrt"
 }
 
-// Device returns a device given its ID.
-// The same pointer will be returned for the same ID.
-// Consequently, it is valid to compare pointers to check that two devices are the same.
-func (plat *Platform) Device(ordinal int) (backend.Device, error) {
-	return plat.device, nil
+// Send raw data to the device.
+func (plat *Platform) Send(dev backend.DeviceNum, data []byte, sh *shape.Shape) (backend.DeviceHandle, error) {
+	return plat.send(dev, data, sh)
 }
 
 // Client returns the PJRT client.

@@ -22,42 +22,21 @@ import (
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
-// Device is a PJRT device.
-type Device struct {
-	plat *Platform
-	ord  int
-}
-
-// Platform owning the device.
-func (dev *Device) Platform() backend.Platform {
-	return dev.plat
-}
-
-// Ordinal of the device on the backend.
-func (dev *Device) Ordinal() int {
-	return dev.ord
-}
-
-// Send raw data to the device. Return a handle from this package.
-func (dev *Device) send(data []byte, sh *shape.Shape) (*Handle, error) {
+// send raw data to the device. Return a handle from this package.
+func (plat *Platform) send(dev backend.DeviceNum, data []byte, sh *shape.Shape) (*Handle, error) {
 	dt := pjrtgx.ToDType(sh.DType)
 	if dt == dtypes.InvalidDType {
 		return nil, errors.Errorf("GX %s data type not supported by pjrt", sh.DType.String())
 	}
-	buffer, err := dev.plat.clt.BufferFromHost().FromRawData(data, dt, sh.AxisLengths).Done()
+	buffer, err := plat.clt.BufferFromHost().FromRawData(data, dt, sh.AxisLengths).Done()
 	if err != nil {
 		return nil, err
 	}
-	return NewHandle(dev, buffer, sh)
+	return NewHandle(plat, dev, buffer, sh)
 }
 
-func (dev *Device) sendFromHost(handle backend.HostBuffer) (*Handle, error) {
+func (plat *Platform) sendFromHost(dev backend.DeviceNum, handle backend.HostBuffer) (*Handle, error) {
 	data := handle.Acquire()
 	defer handle.Release()
-	return dev.send(data, handle.Shape())
-}
-
-// Send raw data to the device.
-func (dev *Device) Send(data []byte, sh *shape.Shape) (backend.DeviceHandle, error) {
-	return dev.send(data, sh)
+	return plat.send(dev, data, handle.Shape())
 }

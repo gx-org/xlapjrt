@@ -27,7 +27,8 @@ import (
 type (
 	// Handle of a PJRT buffer.
 	Handle struct {
-		device *Device
+		plat   *Platform
+		device backend.DeviceNum
 		buffer *pjrt.Buffer
 		shape  *shape.Shape
 	}
@@ -41,8 +42,9 @@ type (
 var _ backend.DeviceHandle = (*Handle)(nil)
 
 // NewHandle returns a new platform handle given a PJRT buffer.
-func NewHandle(dev *Device, buffer *pjrt.Buffer, sh *shape.Shape) (*Handle, error) {
+func NewHandle(plat *Platform, dev backend.DeviceNum, buffer *pjrt.Buffer, sh *shape.Shape) (*Handle, error) {
 	return &Handle{
+		plat:   plat,
 		device: dev,
 		buffer: buffer,
 		shape:  sh,
@@ -60,15 +62,11 @@ func (h *Handle) OnDeviceBuffer() *pjrt.Buffer {
 }
 
 // ToDevice transfers the handle to a device.
-func (h *Handle) ToDevice(dev backend.Device) (backend.DeviceHandle, error) {
-	pjrtDev, ok := dev.(*Device)
-	if ok {
-		return ToDevice(pjrtDev, h)
-	}
-	return nil, errors.Errorf("not implemented")
+func (h *Handle) ToDevice(dev backend.DeviceNum) (backend.DeviceHandle, error) {
+	return h.toDevice(dev)
 }
 
-func (h *Handle) toDevice(dev *Device) (*Handle, error) {
+func (h *Handle) toDevice(dev backend.DeviceNum) (*Handle, error) {
 	if h.device == dev {
 		return h, nil
 	}
@@ -76,7 +74,7 @@ func (h *Handle) toDevice(dev *Device) (*Handle, error) {
 	if err := h.buffer.ToHost(data); err != nil {
 		return nil, err
 	}
-	return dev.send(data, h.Shape())
+	return h.plat.send(dev, data, h.Shape())
 }
 
 // ToHost fetches the data from the handle and write it to buffer.
@@ -87,7 +85,7 @@ func (h *Handle) ToHost(buf backend.HostBuffer) error {
 }
 
 // Device on which the array is located.
-func (h *Handle) Device() backend.Device {
+func (h *Handle) Device() backend.DeviceNum {
 	return h.device
 }
 
@@ -97,12 +95,12 @@ func (h *Handle) String() string {
 }
 
 // ToDevice sends a generic handle to a device.
-func ToDevice(dev *Device, handle backend.Handle) (*Handle, error) {
+func ToDevice(plat *Platform, dev backend.DeviceNum, handle backend.Handle) (*Handle, error) {
 	switch handleT := handle.(type) {
 	case *Handle:
 		return handleT.toDevice(dev)
 	case backend.HostBuffer:
-		return dev.sendFromHost(handleT)
+		return plat.sendFromHost(dev, handleT)
 	}
 	return nil, errors.Errorf("not implemented")
 }

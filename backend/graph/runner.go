@@ -25,7 +25,7 @@ import (
 )
 
 type nodeRunner struct {
-	device *pjrtplatform.Device
+	device backend.DeviceNum
 	graph  *Graph
 }
 
@@ -58,7 +58,7 @@ func checkShape(got, want *shape.Shape) error {
 	return nil
 }
 
-func toHandles(dev *pjrtplatform.Device, buffers []*pjrt.Buffer, shapes []*shape.Shape) ([]backend.DeviceHandle, error) {
+func toHandles(plat *pjrtplatform.Platform, dev backend.DeviceNum, buffers []*pjrt.Buffer, shapes []*shape.Shape) ([]backend.DeviceHandle, error) {
 	handles := make([]backend.DeviceHandle, len(buffers))
 	for i, buffer := range buffers {
 		bufferShape, err := bufferShape(buffer)
@@ -69,7 +69,7 @@ func toHandles(dev *pjrtplatform.Device, buffers []*pjrt.Buffer, shapes []*shape
 		if err := checkShape(bufferShape, expectedShape); err != nil {
 			return nil, err
 		}
-		handles[i], err = pjrtplatform.NewHandle(dev, buffer, expectedShape)
+		handles[i], err = pjrtplatform.NewHandle(plat, dev, buffer, expectedShape)
 		if err != nil {
 			return nil, err
 		}
@@ -78,7 +78,7 @@ func toHandles(dev *pjrtplatform.Device, buffers []*pjrt.Buffer, shapes []*shape
 }
 
 // newNodeRunner returns a new node runner given a function and a graph.
-func (graph *Graph) newNodeRunner(dev *pjrtplatform.Device) backend.Executable {
+func (graph *Graph) newNodeRunner(dev backend.DeviceNum) backend.Executable {
 	return &nodeRunner{device: dev, graph: graph}
 }
 func (r *nodeRunner) Run(args []backend.Handle) (out, traced []backend.DeviceHandle, err error) {
@@ -96,11 +96,11 @@ func (r *nodeRunner) Run(args []backend.Handle) (out, traced []backend.DeviceHan
 	}
 	outShapes := r.graph.OutShapes()
 	numOut := len(outShapes)
-	out, err = toHandles(r.device, results[:numOut], outShapes)
+	out, err = toHandles(r.graph.plat, r.device, results[:numOut], outShapes)
 	if err != nil {
 		return nil, nil, err
 	}
-	traced, err = toHandles(r.device, results[numOut:], r.graph.TracedShapes())
+	traced, err = toHandles(r.graph.plat, r.device, results[numOut:], r.graph.TracedShapes())
 	if err != nil {
 		return nil, nil, err
 	}
