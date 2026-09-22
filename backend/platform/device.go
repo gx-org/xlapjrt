@@ -19,6 +19,7 @@ import (
 	"github.com/gomlx/gopjrt/dtypes"
 	"github.com/gx-org/backend"
 	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/gx/golang/backend/kernels"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
@@ -35,7 +36,7 @@ func (plat *Platform) send(dev backend.DeviceNum, data []byte, sh *shape.Shape) 
 	return NewHandle(plat, dev, buffer, sh)
 }
 
-func (plat *Platform) sendFromHost(dev backend.DeviceNum, handle backend.HostBuffer) (*Handle, error) {
+func (plat *Platform) sendFromHost(dev backend.DeviceNum, handle kernels.HostBuffer) (*Handle, error) {
 	data := handle.Acquire()
 	defer handle.Release()
 	return plat.send(dev, data, handle.Shape())

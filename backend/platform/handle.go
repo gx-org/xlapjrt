@@ -22,6 +22,7 @@ import (
 	"github.com/gomlx/gopjrt/xlabuilder"
 	"github.com/gx-org/backend"
 	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
 type (
@@ -78,10 +79,8 @@ func (h *Handle) toDevice(dev backend.DeviceNum) (*Handle, error) {
 }
 
 // ToHost fetches the data from the handle and write it to buffer.
-func (h *Handle) ToHost(buf backend.HostBuffer) error {
-	data := buf.Acquire()
-	defer buf.Release()
-	return h.buffer.ToHost(data)
+func (h *Handle) ToHost(buf []byte) error {
+	return h.buffer.ToHost(buf)
 }
 
 // Device on which the array is located.
@@ -99,7 +98,7 @@ func ToDevice(plat *Platform, dev backend.DeviceNum, handle backend.Handle) (*Ha
 	switch handleT := handle.(type) {
 	case *Handle:
 		return handleT.toDevice(dev)
-	case backend.HostBuffer:
+	case kernels.HostBuffer:
 		return plat.sendFromHost(dev, handleT)
 	}
 	return nil, errors.Errorf("not implemented")

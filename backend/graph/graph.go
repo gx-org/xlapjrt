@@ -243,10 +243,7 @@ func newLiteral[T dtypes.Supported](data []T, dims []int) (*xlabuilder.Literal, 
 }
 
 // Constant returns a node representing a numerical constant value in the graph.
-func (g *Graph) Constant(buffer backend.HostBuffer) (backend.Value, error) {
-	data := buffer.Acquire()
-	defer buffer.Release()
-	shap := buffer.Shape()
+func (g *Graph) Constant(data []byte, shap *shape.Shape) (backend.Value, error) {
 	var literal *xlabuilder.Literal
 	var err error
 	switch shap.DType {
