@@ -39,7 +39,8 @@ func TestPJRTCoreUnit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testbuild.RunFactory(t, nil,
+	testbuild.RunFactory(t,
+		gxtesting.Importers(),
 		testrtm.Factory(
 			bck,
 			tests.CoreUnits...,
