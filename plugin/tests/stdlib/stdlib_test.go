@@ -18,15 +18,13 @@ import (
 
 	"github.com/gx-org/xlapjrt/plugin"
 	"github.com/gx-org/gx/build/builder/testbuild"
-	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/internal/testing/testrtm"
-	"github.com/gx-org/gx/stdlib"
 	gxtesting "github.com/gx-org/gx/tests/testing"
 	"github.com/gx-org/gx/tests"
 )
 
 func TestPJRTStdlib(t *testing.T) {
-	bld := tests.StdlibBuilder()
+	bld := tests.NewBuilder()
 	bck, err := plugin.NewWithBuilder("cpu", bld)
 	if err != nil {
 		t.Fatal(err)
@@ -38,15 +36,13 @@ func TestPJRTStdlib(t *testing.T) {
 }
 
 func TestPJRTStdlibUnit(t *testing.T) {
-	bld := tests.StdlibBuilder()
+	bld := tests.NewBuilder()
 	bck, err := plugin.NewWithBuilder("cpu", bld)
 	if err != nil {
 		t.Fatal(err)
 	}
 	testbuild.RunFactory(t,
-		[]importers.Importer{
-			stdlib.Importer(),
-		},
+		bck.Builder().Loader().Importers(),
 		testrtm.Factory(
 			bck,
 			tests.StdlibUnits...,

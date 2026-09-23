@@ -23,7 +23,7 @@ import (
 )
 
 func newRuntime() (*api.Runtime, error) {
-	bld := tests.StdlibBuilder()
+	bld := tests.NewBuilder()
 	return plugin.NewWithBuilder("cpu", bld)
 }
 

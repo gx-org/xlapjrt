@@ -24,7 +24,7 @@ import (
 )
 
 func TestPJRTCore(t *testing.T) {
-	bck, err := plugin.NewWithBuilder("cpu", tests.CoreBuilder())
+	bck, err := plugin.NewWithBuilder("cpu", tests.NewBuilder())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,12 +35,12 @@ func TestPJRTCore(t *testing.T) {
 }
 
 func TestPJRTCoreUnit(t *testing.T) {
-	bck, err := plugin.NewWithBuilder("cpu", tests.CoreBuilder())
+	bck, err := plugin.NewWithBuilder("cpu", tests.NewBuilder())
 	if err != nil {
 		t.Fatal(err)
 	}
 	testbuild.RunFactory(t,
-		gxtesting.Importers(),
+		bck.Builder().Loader().Importers(),
 		testrtm.Factory(
 			bck,
 			tests.CoreUnits...,
