@@ -21,7 +21,7 @@ import (
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gomlx/gopjrt/xlabuilder"
 	"github.com/gx-org/backend"
-	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/backend/shapes"
 	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
@@ -31,7 +31,7 @@ type (
 		plat   *Platform
 		device backend.DeviceNum
 		buffer *pjrt.Buffer
-		shape  *shape.Shape
+		shape  *shapes.Shape
 	}
 
 	// PJRTLiteral extracts literal values from handles to create XLA constants.
@@ -43,7 +43,7 @@ type (
 var _ backend.DeviceHandle = (*Handle)(nil)
 
 // NewHandle returns a new platform handle given a PJRT buffer.
-func NewHandle(plat *Platform, dev backend.DeviceNum, buffer *pjrt.Buffer, sh *shape.Shape) (*Handle, error) {
+func NewHandle(plat *Platform, dev backend.DeviceNum, buffer *pjrt.Buffer, sh *shapes.Shape) (*Handle, error) {
 	return &Handle{
 		plat:   plat,
 		device: dev,
@@ -53,7 +53,7 @@ func NewHandle(plat *Platform, dev backend.DeviceNum, buffer *pjrt.Buffer, sh *s
 }
 
 // Shape of the underlying array.
-func (h *Handle) Shape() *shape.Shape {
+func (h *Handle) Shape() *shapes.Shape {
 	return h.shape
 }
 

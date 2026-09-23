@@ -19,7 +19,7 @@ import (
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gx-org/backend"
 	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/backend/shapes"
 	pjrtplatform "github.com/gx-org/xlapjrt/backend/platform"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
@@ -29,7 +29,7 @@ type nodeRunner struct {
 	graph  *Graph
 }
 
-func bufferShape(buffer *pjrt.Buffer) (*shape.Shape, error) {
+func bufferShape(buffer *pjrt.Buffer) (*shapes.Shape, error) {
 	dtype, err := buffer.DType()
 	if err != nil {
 		return nil, err
@@ -38,13 +38,13 @@ func bufferShape(buffer *pjrt.Buffer) (*shape.Shape, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &shape.Shape{
+	return &shapes.Shape{
 		DType:       pjrtgx.ToGXDType(dtype),
 		AxisLengths: dims,
 	}, nil
 }
 
-func checkShape(got, want *shape.Shape) error {
+func checkShape(got, want *shapes.Shape) error {
 	gotDType := got.DType
 	if gotDType == dtypes.Int64 && want.DType == dtypes.Int {
 		gotDType = want.DType
@@ -58,7 +58,7 @@ func checkShape(got, want *shape.Shape) error {
 	return nil
 }
 
-func toHandles(plat *pjrtplatform.Platform, dev backend.DeviceNum, buffers []*pjrt.Buffer, shapes []*shape.Shape) ([]backend.DeviceHandle, error) {
+func toHandles(plat *pjrtplatform.Platform, dev backend.DeviceNum, buffers []*pjrt.Buffer, shapes []*shapes.Shape) ([]backend.DeviceHandle, error) {
 	handles := make([]backend.DeviceHandle, len(buffers))
 	for i, buffer := range buffers {
 		bufferShape, err := bufferShape(buffer)

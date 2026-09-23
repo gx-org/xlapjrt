@@ -18,7 +18,7 @@ package backend
 import (
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gx-org/backend"
-	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/backend/shapes"
 	"github.com/gx-org/gx/build/builder"
 	pjrtgraph "github.com/gx-org/xlapjrt/backend/graph"
 	pjrtplatform "github.com/gx-org/xlapjrt/backend/platform"
@@ -46,7 +46,7 @@ func (b *builderImpl) Main() backend.Function {
 	return b.main
 }
 
-func (b *builderImpl) Compile(dev backend.DeviceNum, output, traced []*backend.OutputNode, params []*shape.Shape) (backend.Executable, error) {
+func (b *builderImpl) Compile(dev backend.DeviceNum, output, traced []*backend.OutputNode, params []*shapes.Shape) (backend.Executable, error) {
 	return b.main.Compile(dev, output, traced, params)
 }
 

@@ -19,7 +19,7 @@ import (
 	"github.com/gomlx/gopjrt/dtypes"
 	"github.com/gomlx/gopjrt/xlabuilder"
 	dtype "github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/backend/shapes"
 )
 
 // Supported are the types supported by this backend.
@@ -77,7 +77,7 @@ func ToDType(k dtype.DType) dtypes.DType {
 }
 
 // ToShape converts a GX shape into a gopjrt/xla shape.
-func ToShape(shape *shape.Shape) xlabuilder.Shape {
+func ToShape(shape *shapes.Shape) xlabuilder.Shape {
 	return xlabuilder.Shape{
 		DType:      ToDType(shape.DType),
 		Dimensions: shape.AxisLengths,
@@ -85,8 +85,8 @@ func ToShape(shape *shape.Shape) xlabuilder.Shape {
 }
 
 // ToGXShape converts a gopjrt shape into a GX shape.
-func ToGXShape(sh xlabuilder.Shape) *shape.Shape {
-	return &shape.Shape{
+func ToGXShape(sh xlabuilder.Shape) *shapes.Shape {
+	return &shapes.Shape{
 		DType:       ToGXDType(sh.DType),
 		AxisLengths: sh.Dimensions,
 	}

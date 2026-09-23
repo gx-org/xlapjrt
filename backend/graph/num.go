@@ -18,7 +18,7 @@ import (
 	"github.com/gomlx/gopjrt/xlabuilder"
 	"github.com/gx-org/backend"
 	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/backend/shapes"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
@@ -32,7 +32,7 @@ func (g *Graph) Dot(x, y backend.Value) (backend.Value, error) {
 }
 
 // Iota creates a constant of the given shape with increasing numbers (starting from 0) on the given axis.
-func (g *Graph) Iota(shape *shape.Shape, iotaAxis int) (backend.Value, error) {
+func (g *Graph) Iota(shape *shapes.Shape, iotaAxis int) (backend.Value, error) {
 	xlaOp, err := xlabuilder.Iota(g.builder, pjrtgx.ToShape(shape), iotaAxis)
 	if err != nil {
 		return nil, err

@@ -18,13 +18,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gomlx/gopjrt/dtypes"
 	"github.com/gx-org/backend"
-	"github.com/gx-org/backend/shape"
+	"github.com/gx-org/backend/shapes"
 	"github.com/gx-org/gx/golang/backend/kernels"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
 // send raw data to the device. Return a handle from this package.
-func (plat *Platform) send(dev backend.DeviceNum, data []byte, sh *shape.Shape) (*Handle, error) {
+func (plat *Platform) send(dev backend.DeviceNum, data []byte, sh *shapes.Shape) (*Handle, error) {
 	dt := pjrtgx.ToDType(sh.DType)
 	if dt == dtypes.InvalidDType {
 		return nil, errors.Errorf("GX %s data type not supported by pjrt", sh.DType.String())
