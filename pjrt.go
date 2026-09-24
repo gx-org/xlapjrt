@@ -80,14 +80,14 @@ func ToDType(k dtype.DType) dtypes.DType {
 func ToShape(shape *shapes.Shape) xlabuilder.Shape {
 	return xlabuilder.Shape{
 		DType:      ToDType(shape.DType),
-		Dimensions: shape.AxisLengths,
+		Dimensions: shape.Dimensions,
 	}
 }
 
 // ToGXShape converts a gopjrt shape into a GX shape.
 func ToGXShape(sh xlabuilder.Shape) *shapes.Shape {
 	return &shapes.Shape{
-		DType:       ToGXDType(sh.DType),
-		AxisLengths: sh.Dimensions,
+		DType:      ToGXDType(sh.DType),
+		Dimensions: sh.Dimensions,
 	}
 }

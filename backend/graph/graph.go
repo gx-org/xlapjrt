@@ -248,23 +248,23 @@ func (g *Graph) Constant(data []byte, shap *shapes.Shape) (backend.Value, error)
 	var err error
 	switch shap.DType {
 	case dtype.Bool:
-		literal, err = newLiteral(dtype.ToSlice[bool](data), shap.AxisLengths)
+		literal, err = newLiteral(dtype.ToSlice[bool](data), shap.Dimensions)
 	case dtype.BFloat16:
-		literal, err = newLiteral(dtype.ToSlice[bfloat16.BFloat16](data), shap.AxisLengths)
+		literal, err = newLiteral(dtype.ToSlice[bfloat16.BFloat16](data), shap.Dimensions)
 	case dtype.Float32:
-		literal, err = newLiteral(dtype.ToSlice[float32](data), shap.AxisLengths)
+		literal, err = newLiteral(dtype.ToSlice[float32](data), shap.Dimensions)
 	case dtype.Float64:
-		literal, err = newLiteral(dtype.ToSlice[float64](data), shap.AxisLengths)
+		literal, err = newLiteral(dtype.ToSlice[float64](data), shap.Dimensions)
 	case dtype.Int:
-		literal, err = newLiteral(dtype.ToSlice[int](data), shap.AxisLengths)
+		literal, err = newLiteral(dtype.ToSlice[int](data), shap.Dimensions)
 	case dtype.Int32:
-		literal, err = newLiteral(dtype.ToSlice[int32](data), shap.AxisLengths)
+		literal, err = newLiteral(dtype.ToSlice[int32](data), shap.Dimensions)
 	case dtype.Int64:
-		literal, err = newLiteral(dtype.ToSlice[int64](data), shap.AxisLengths)
+		literal, err = newLiteral(dtype.ToSlice[int64](data), shap.Dimensions)
 	case dtype.Uint32:
-		literal, err = newLiteral(dtype.ToSlice[uint32](data), shap.AxisLengths)
+		literal, err = newLiteral(dtype.ToSlice[uint32](data), shap.Dimensions)
 	case dtype.Uint64:
-		literal, err = newLiteral(dtype.ToSlice[uint64](data), shap.AxisLengths)
+		literal, err = newLiteral(dtype.ToSlice[uint64](data), shap.Dimensions)
 	default:
 		err = errors.Errorf("cannot create a PJRT literal: data type %v not supported", shap.DType)
 	}
@@ -550,12 +550,12 @@ func ToXLATuple(n backend.Value) backend.Tuple {
 // Slice returns a slice on a node.
 func (g *Graph) Slice(x backend.Value, i int) (backend.Value, error) {
 	shape := x.(pjrtNode).BackendShape()
-	rank := len(shape.AxisLengths)
+	rank := len(shape.Dimensions)
 
 	starts := make([]int, rank)
 	limits := make([]int, rank)
 	strides := make([]int, rank)
-	for axis, axisSize := range shape.AxisLengths {
+	for axis, axisSize := range shape.Dimensions {
 		starts[axis] = 0
 		limits[axis] = axisSize
 		strides[axis] = 1
@@ -569,7 +569,7 @@ func (g *Graph) Slice(x backend.Value, i int) (backend.Value, error) {
 		return nil, err
 	}
 	// Slice doesn't reduce rank, so insert an additional Reshape to handle it.
-	reshapeOp, err := xlabuilder.Reshape(sliceOp, shape.AxisLengths[1:]...)
+	reshapeOp, err := xlabuilder.Reshape(sliceOp, shape.Dimensions[1:]...)
 	if err != nil {
 		return nil, err
 	}

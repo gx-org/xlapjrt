@@ -23,21 +23,21 @@ import (
 // Split implements the split operation in terms of slice, with static indices.
 func (g *Graph) Split(x backend.Value, axis int, numSplits int) (backend.Value, error) {
 	shap := x.(pjrtNode).BackendShape()
-	rank := len(shap.AxisLengths)
+	rank := len(shap.Dimensions)
 
 	if axis < 0 || axis >= rank {
 		return nil, errors.Errorf("axis %d is out of bounds for rank %d", axis, rank)
 	}
-	if shap.AxisLengths[axis]%numSplits != 0 {
-		return nil, errors.Errorf("axis %d has size %d which is not divisible by %d numSplits", axis, shap.AxisLengths[axis], numSplits)
+	if shap.Dimensions[axis]%numSplits != 0 {
+		return nil, errors.Errorf("axis %d has size %d which is not divisible by %d numSplits", axis, shap.Dimensions[axis], numSplits)
 	}
-	stride := shap.AxisLengths[axis] / numSplits
+	stride := shap.Dimensions[axis] / numSplits
 	slicedNodes := make([]backend.Value, numSplits)
 	for i := range numSplits {
 		starts := make([]int, rank)
 		limits := make([]int, rank)
 		strides := make([]int, rank)
-		for axis, axisSize := range shap.AxisLengths {
+		for axis, axisSize := range shap.Dimensions {
 			limits[axis] = axisSize
 			strides[axis] = 1
 		}
@@ -52,7 +52,7 @@ func (g *Graph) Split(x backend.Value, axis int, numSplits int) (backend.Value, 
 		slicedNodes[i] = g.newNode(xlaOp)
 	}
 
-	outputDims := append([]int{1}, shap.AxisLengths...)
+	outputDims := append([]int{1}, shap.Dimensions...)
 	outputDims[axis+1] = stride
 
 	reshapedNodes := make([]backend.Value, numSplits)

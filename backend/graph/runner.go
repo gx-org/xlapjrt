@@ -39,8 +39,8 @@ func bufferShape(buffer *pjrt.Buffer) (*shapes.Shape, error) {
 		return nil, err
 	}
 	return &shapes.Shape{
-		DType:       pjrtgx.ToGXDType(dtype),
-		AxisLengths: dims,
+		DType:      pjrtgx.ToGXDType(dtype),
+		Dimensions: dims,
 	}, nil
 }
 
@@ -53,7 +53,7 @@ func checkShape(got, want *shapes.Shape) error {
 		return errors.Errorf("PJRT backend returned a buffer with a %s data type but GX expects a %s data type", got.DType, want.DType)
 	}
 	if got.Size() != want.Size() {
-		return errors.Errorf("PJRT backend returned a buffer with axis lengths %v but GX expects %v", got.AxisLengths, want.AxisLengths)
+		return errors.Errorf("PJRT backend returned a buffer with axis lengths %v but GX expects %v", got.Dimensions, want.Dimensions)
 	}
 	return nil
 }

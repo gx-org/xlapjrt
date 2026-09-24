@@ -29,7 +29,7 @@ func (plat *Platform) send(dev backend.DeviceNum, data []byte, sh *shapes.Shape)
 	if dt == dtypes.InvalidDType {
 		return nil, errors.Errorf("GX %s data type not supported by pjrt", sh.DType.String())
 	}
-	buffer, err := plat.clt.BufferFromHost().FromRawData(data, dt, sh.AxisLengths).Done()
+	buffer, err := plat.clt.BufferFromHost().FromRawData(data, dt, sh.Dimensions).Done()
 	if err != nil {
 		return nil, err
 	}
