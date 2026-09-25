@@ -489,11 +489,11 @@ func (g *Graph) Reshape(x backend.Value, axisLengths []int) (backend.Value, erro
 	return g.newNode(xlaOp), nil
 }
 
-// Cast returns a cast/convert operator node.
-func (g *Graph) Cast(x backend.Value, target dtypes.DType) (backend.Value, error) {
-	xlaDType := pjrtgx.ToPJDType(target)
+// ConvertDType returns a cast/convert operator node.
+func (g *Graph) ConvertDType(x backend.Value, dtype dtypes.DType) (backend.Value, error) {
+	xlaDType := pjrtgx.ToPJDType(dtype)
 	if xlaDType == pjtypes.InvalidDType {
-		return nil, errors.Errorf("cannot convert %s to a XLA data type", target.String())
+		return nil, errors.Errorf("cannot convert %s to a XLA data type", dtype.String())
 	}
 	xlaOp, err := xlabuilder.ConvertDType(g.xlaHandle(x), xlaDType)
 	if err != nil {
