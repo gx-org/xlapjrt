@@ -20,13 +20,15 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/gomlx/gopjrt/dtypes/bfloat16"
-	"github.com/gomlx/gopjrt/dtypes"
+	"github.com/gomlx/compute/dtypes/bfloat16"
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/shapes"
+	pjbfloat16 "github.com/gomlx/gopjrt/dtypes/bfloat16"
+	pjtypes "github.com/gomlx/gopjrt/dtypes"
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gomlx/gopjrt/xlabuilder"
 	"github.com/gx-org/backend"
 	dtype "github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/shapes"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	pjrtplatform "github.com/gx-org/xlapjrt/backend/platform"
 	pjrtgx "github.com/gx-org/xlapjrt"
@@ -42,8 +44,8 @@ type (
 		executable *pjrt.LoadedExecutable
 
 		in     []*Node
-		out    []*shapes.Shape
-		traced []*shapes.Shape
+		out    []shapes.Shape
+		traced []shapes.Shape
 	}
 
 	pjrtNode interface {
@@ -51,7 +53,7 @@ type (
 
 		xlaOp() *xlabuilder.Op
 
-		BackendShape() *shapes.Shape
+		BackendShape() shapes.Shape
 	}
 )
 
@@ -60,11 +62,11 @@ var (
 )
 
 // New returns a new graph.
-func New(plat *pjrtplatform.Platform, funcName string, shapes []*shapes.Shape) (*Graph, error) {
+func New(plat *pjrtplatform.Platform, funcName string, shapes []shapes.Shape) (*Graph, error) {
 	return newGraph(plat, shapes, xlabuilder.New(funcName))
 }
 
-func newGraph(plat *pjrtplatform.Platform, shapes []*shapes.Shape, builder *xlabuilder.XlaBuilder) (*Graph, error) {
+func newGraph(plat *pjrtplatform.Platform, shapes []shapes.Shape, builder *xlabuilder.XlaBuilder) (*Graph, error) {
 	g := &Graph{
 		plat:    plat,
 		builder: builder,
@@ -77,7 +79,7 @@ func newGraph(plat *pjrtplatform.Platform, shapes []*shapes.Shape, builder *xlab
 	return g, nil
 }
 
-func (g *Graph) buildTupleArgument(shapes []*shapes.Shape) (*tuple, error) {
+func (g *Graph) buildTupleArgument(shapes []shapes.Shape) (*tuple, error) {
 	if len(shapes) == 0 {
 		return nil, nil
 	}
@@ -93,7 +95,7 @@ func (g *Graph) buildTupleArgument(shapes []*shapes.Shape) (*tuple, error) {
 	return &tuple{Node: g.newNode(xlaOp).Info(argTuple)}, nil
 }
 
-func (g *Graph) tupleArgument(got *shapes.Shape, name string, index int) (backend.Value, error) {
+func (g *Graph) tupleArgument(got shapes.Shape, name string, index int) (backend.Value, error) {
 	op, err := g.inputs.element(index)
 	if err != nil {
 		return nil, err
@@ -105,19 +107,19 @@ func (g *Graph) tupleArgument(got *shapes.Shape, name string, index int) (backen
 	return op.Info("[%s]", name), nil
 }
 
-func unpackOutput(outs []*backend.OutputNode) ([]backend.Value, []*shapes.Shape) {
+func unpackOutput(outs []*backend.OutputNode) ([]backend.Value, []shapes.Shape) {
 	nodes := make([]backend.Value, len(outs))
-	shapes := make([]*shapes.Shape, len(outs))
+	shs := make([]shapes.Shape, len(outs))
 	for i, out := range outs {
 		nodes[i] = out.Node
-		shapes[i] = out.Shape
+		shs[i] = out.Shape
 	}
-	return nodes, shapes
+	return nodes, shs
 }
 
 // Compile a node given a set of parameters and using this node as an output.
 // Returns a function that will be run on a device given some inputs.
-func (g *Graph) Compile(dev backend.DeviceNum, out, traced []*backend.OutputNode, params []*shapes.Shape) (backend.Executable, error) {
+func (g *Graph) Compile(dev backend.DeviceNum, out, traced []*backend.OutputNode, params []shapes.Shape) (backend.Executable, error) {
 	var outNodes, tracedNodes []backend.Value
 	outNodes, g.out = unpackOutput(out)
 	tracedNodes, g.traced = unpackOutput(traced)
@@ -138,12 +140,12 @@ func (g *Graph) Compile(dev backend.DeviceNum, out, traced []*backend.OutputNode
 }
 
 // OutShapes returns the expected shapes of the out nodes.
-func (g *Graph) OutShapes() []*shapes.Shape {
+func (g *Graph) OutShapes() []shapes.Shape {
 	return g.out
 }
 
 // TracedShapes returns the expected shapes of the out nodes.
-func (g *Graph) TracedShapes() []*shapes.Shape {
+func (g *Graph) TracedShapes() []shapes.Shape {
 	return g.traced
 }
 
@@ -202,7 +204,7 @@ func (n *Node) Graph() backend.Function {
 
 // BackendShape returns the shape inferred by a backend,
 // as opposed to a shape inferred by GX.
-func (n *Node) BackendShape() *shapes.Shape {
+func (n *Node) BackendShape() shapes.Shape {
 	return pjrtgx.ToGXShape(n.op.Shape)
 }
 
@@ -235,7 +237,7 @@ func (n *Node) String() string {
 	return bld.String()
 }
 
-func newLiteral[T dtypes.Supported](data []T, dims []int) (*xlabuilder.Literal, error) {
+func newLiteral[T pjtypes.Supported](data []T, dims []int) (*xlabuilder.Literal, error) {
 	if len(dims) == 0 {
 		return xlabuilder.NewScalarLiteral(data[0]), nil
 	}
@@ -243,27 +245,25 @@ func newLiteral[T dtypes.Supported](data []T, dims []int) (*xlabuilder.Literal, 
 }
 
 // Constant returns a node representing a numerical constant value in the graph.
-func (g *Graph) Constant(data []byte, shap *shapes.Shape) (backend.Value, error) {
+func (g *Graph) Constant(data []byte, shap shapes.Shape) (backend.Value, error) {
 	var literal *xlabuilder.Literal
 	var err error
 	switch shap.DType {
-	case dtype.Bool:
+	case dtypes.Bool:
 		literal, err = newLiteral(dtype.ToSlice[bool](data), shap.Dimensions)
-	case dtype.BFloat16:
-		literal, err = newLiteral(dtype.ToSlice[bfloat16.BFloat16](data), shap.Dimensions)
-	case dtype.Float32:
+	case dtypes.BFloat16:
+		literal, err = newLiteral(dtype.ToSlice[pjbfloat16.BFloat16](data), shap.Dimensions)
+	case dtypes.Float32:
 		literal, err = newLiteral(dtype.ToSlice[float32](data), shap.Dimensions)
-	case dtype.Float64:
+	case dtypes.Float64:
 		literal, err = newLiteral(dtype.ToSlice[float64](data), shap.Dimensions)
-	case dtype.Int:
-		literal, err = newLiteral(dtype.ToSlice[int](data), shap.Dimensions)
-	case dtype.Int32:
+	case dtypes.Int32:
 		literal, err = newLiteral(dtype.ToSlice[int32](data), shap.Dimensions)
-	case dtype.Int64:
+	case dtypes.Int64:
 		literal, err = newLiteral(dtype.ToSlice[int64](data), shap.Dimensions)
-	case dtype.Uint32:
+	case dtypes.Uint32:
 		literal, err = newLiteral(dtype.ToSlice[uint32](data), shap.Dimensions)
-	case dtype.Uint64:
+	case dtypes.Uint64:
 		literal, err = newLiteral(dtype.ToSlice[uint64](data), shap.Dimensions)
 	default:
 		err = errors.Errorf("cannot create a PJRT literal: data type %v not supported", shap.DType)
@@ -286,7 +286,7 @@ func (g *Graph) NewAtomLiteral(v any) (backend.Value, error) {
 	case int:
 		lit = xlabuilder.NewScalarLiteral(vT)
 	case bfloat16.BFloat16:
-		lit = xlabuilder.NewScalarLiteral(vT)
+		lit = xlabuilder.NewScalarLiteral(pjbfloat16.BFloat16(vT))
 	default:
 		lit, err = xlabuilder.NewScalarLiteralFromAny(vT)
 	}
@@ -302,7 +302,18 @@ func (g *Graph) NewAtomLiteral(v any) (backend.Value, error) {
 
 // NewArrayLiteral creates a node from a constant array.
 func (g *Graph) NewArrayLiteral(flat any, axlengths ...int) (backend.Value, error) {
-	lit, err := xlabuilder.NewArrayLiteralFromAny(flat, axlengths...)
+	var lit *xlabuilder.Literal
+	var err error
+	switch flatT := flat.(type) {
+	case []bfloat16.BFloat16:
+		pjFlat := make([]pjbfloat16.BFloat16, len(flatT))
+		for i, v := range flatT {
+			pjFlat[i] = pjbfloat16.BFloat16(v)
+		}
+		lit, err = xlabuilder.NewArrayLiteral(pjFlat, axlengths...)
+	default:
+		lit, err = xlabuilder.NewArrayLiteralFromAny(flat, axlengths...)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +325,7 @@ func (g *Graph) NewArrayLiteral(flat any, axlengths ...int) (backend.Value, erro
 }
 
 // Argument returns a node set by a caller when calling the function.
-func (g *Graph) Argument(name string, shape *shapes.Shape, index int) (node backend.Value, err error) {
+func (g *Graph) Argument(name string, shape shapes.Shape, index int) (node backend.Value, err error) {
 	if g.inputs != nil {
 		return g.tupleArgument(shape, name, index)
 	}
@@ -479,9 +490,9 @@ func (g *Graph) Reshape(x backend.Value, axisLengths []int) (backend.Value, erro
 }
 
 // Cast returns a cast/convert operator node.
-func (g *Graph) Cast(x backend.Value, target dtype.DType) (backend.Value, error) {
-	xlaDType := pjrtgx.ToDType(target)
-	if xlaDType == dtypes.InvalidDType {
+func (g *Graph) Cast(x backend.Value, target dtypes.DType) (backend.Value, error) {
+	xlaDType := pjrtgx.ToPJDType(target)
+	if xlaDType == pjtypes.InvalidDType {
 		return nil, errors.Errorf("cannot convert %s to a XLA data type", target.String())
 	}
 	xlaOp, err := xlabuilder.ConvertDType(g.xlaHandle(x), xlaDType)
@@ -577,7 +588,7 @@ func (g *Graph) Slice(x backend.Value, i int) (backend.Value, error) {
 }
 
 // BroadcastInDim broadcasts x to an output with the given shape.
-func (g *Graph) BroadcastInDim(x backend.Value, shape *shapes.Shape, broadcastAxes []int) (backend.Value, error) {
+func (g *Graph) BroadcastInDim(x backend.Value, shape shapes.Shape, broadcastAxes []int) (backend.Value, error) {
 	xlaOp, err := xlabuilder.BroadcastInDim(g.xlaHandle(x), pjrtgx.ToShape(shape), broadcastAxes)
 	if err != nil {
 		return nil, err
@@ -673,7 +684,7 @@ func (g *Graph) Call(sg *backend.Subgraph, args ...backend.Value) (backend.Value
 }
 
 // Subgraph returns a Graph instance that maps to a new subgraph.
-func (g *Graph) Subgraph(name string, inputs []*shapes.Shape) (backend.Function, error) {
+func (g *Graph) Subgraph(name string, inputs []shapes.Shape) (backend.Function, error) {
 	subName := g.builder.Name() + "." + name
 	builder := g.builder.CreateSubBuilder(subName)
 	return newGraph(g.plat, inputs, builder)

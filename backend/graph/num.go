@@ -15,10 +15,10 @@
 package graph
 
 import (
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/xlabuilder"
 	"github.com/gx-org/backend"
-	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/shapes"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
@@ -32,7 +32,7 @@ func (g *Graph) Dot(x, y backend.Value) (backend.Value, error) {
 }
 
 // Iota creates a constant of the given shape with increasing numbers (starting from 0) on the given axis.
-func (g *Graph) Iota(shape *shapes.Shape, iotaAxis int) (backend.Value, error) {
+func (g *Graph) Iota(shape shapes.Shape, iotaAxis int) (backend.Value, error) {
 	xlaOp, err := xlabuilder.Iota(g.builder, pjrtgx.ToShape(shape), iotaAxis)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (g *Graph) Iota(shape *shapes.Shape, iotaAxis int) (backend.Value, error) {
 
 // ArgMinMax returns a new argmin/argmax node.
 func (g *Graph) ArgMinMax(x backend.Value, axis int, outputDType dtypes.DType, isMin bool) (backend.Value, error) {
-	xlaOp, err := xlabuilder.ArgMinMax(g.xlaHandle(x), axis, pjrtgx.ToDType(outputDType), isMin)
+	xlaOp, err := xlabuilder.ArgMinMax(g.xlaHandle(x), axis, pjrtgx.ToPJDType(outputDType), isMin)
 	if err != nil {
 		return nil, err
 	}

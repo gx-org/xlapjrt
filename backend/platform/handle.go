@@ -18,10 +18,10 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gomlx/gopjrt/xlabuilder"
 	"github.com/gx-org/backend"
-	"github.com/gx-org/backend/shapes"
 	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
@@ -31,7 +31,7 @@ type (
 		plat   *Platform
 		device backend.DeviceNum
 		buffer *pjrt.Buffer
-		shape  *shapes.Shape
+		shape  shapes.Shape
 	}
 
 	// PJRTLiteral extracts literal values from handles to create XLA constants.
@@ -43,7 +43,7 @@ type (
 var _ backend.DeviceHandle = (*Handle)(nil)
 
 // NewHandle returns a new platform handle given a PJRT buffer.
-func NewHandle(plat *Platform, dev backend.DeviceNum, buffer *pjrt.Buffer, sh *shapes.Shape) (*Handle, error) {
+func NewHandle(plat *Platform, dev backend.DeviceNum, buffer *pjrt.Buffer, sh shapes.Shape) (*Handle, error) {
 	return &Handle{
 		plat:   plat,
 		device: dev,
@@ -53,7 +53,7 @@ func NewHandle(plat *Platform, dev backend.DeviceNum, buffer *pjrt.Buffer, sh *s
 }
 
 // Shape of the underlying array.
-func (h *Handle) Shape() *shapes.Shape {
+func (h *Handle) Shape() shapes.Shape {
 	return h.shape
 }
 
@@ -71,7 +71,7 @@ func (h *Handle) toDevice(dev backend.DeviceNum) (*Handle, error) {
 	if h.device == dev {
 		return h, nil
 	}
-	data := make([]byte, h.shape.ByteSize())
+	data := make([]byte, int(h.shape.ByteSize()))
 	if err := h.buffer.ToHost(data); err != nil {
 		return nil, err
 	}

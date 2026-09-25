@@ -16,17 +16,17 @@ package graph
 
 import (
 	"github.com/pkg/errors"
-	"github.com/gomlx/gopjrt/dtypes"
+	"github.com/gomlx/compute/dtypes"
+	pjtypes "github.com/gomlx/gopjrt/dtypes"
 	"github.com/gomlx/gopjrt/xlabuilder"
 	"github.com/gx-org/backend"
-	dtype "github.com/gx-org/backend/dtypes"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
 // Bitcast returns a bitcast/reinterpret operator node.
-func (g *Graph) Bitcast(x backend.Value, target dtype.DType) (backend.Value, error) {
-	xlaDType := pjrtgx.ToDType(target)
-	if xlaDType == dtypes.InvalidDType {
+func (g *Graph) Bitcast(x backend.Value, target dtypes.DType) (backend.Value, error) {
+	xlaDType := pjrtgx.ToPJDType(target)
+	if xlaDType == pjtypes.InvalidDType {
 		return nil, errors.Errorf("cannot convert %s to a XLA data type", target.String())
 	}
 	xlaOp, err := xlabuilder.Bitcast(g.xlaHandle(x), xlaDType)

@@ -16,10 +16,9 @@ package graph
 
 import (
 	"github.com/pkg/errors"
+	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gx-org/backend"
-	"github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/shapes"
 	pjrtplatform "github.com/gx-org/xlapjrt/backend/platform"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
@@ -29,27 +28,20 @@ type nodeRunner struct {
 	graph  *Graph
 }
 
-func bufferShape(buffer *pjrt.Buffer) (*shapes.Shape, error) {
+func bufferShape(buffer *pjrt.Buffer) (shapes.Shape, error) {
 	dtype, err := buffer.DType()
 	if err != nil {
-		return nil, err
+		return shapes.Invalid(), err
 	}
 	dims, err := buffer.Dimensions()
 	if err != nil {
-		return nil, err
+		return shapes.Invalid(), err
 	}
-	return &shapes.Shape{
-		DType:      pjrtgx.ToGXDType(dtype),
-		Dimensions: dims,
-	}, nil
+	return shapes.Make(pjrtgx.ToGXDType(dtype), dims...), nil
 }
 
-func checkShape(got, want *shapes.Shape) error {
-	gotDType := got.DType
-	if gotDType == dtypes.Int64 && want.DType == dtypes.Int {
-		gotDType = want.DType
-	}
-	if gotDType != want.DType {
+func checkShape(got, want shapes.Shape) error {
+	if got.DType != want.DType {
 		return errors.Errorf("PJRT backend returned a buffer with a %s data type but GX expects a %s data type", got.DType, want.DType)
 	}
 	if got.Size() != want.Size() {
@@ -58,15 +50,15 @@ func checkShape(got, want *shapes.Shape) error {
 	return nil
 }
 
-func toHandles(plat *pjrtplatform.Platform, dev backend.DeviceNum, buffers []*pjrt.Buffer, shapes []*shapes.Shape) ([]backend.DeviceHandle, error) {
+func toHandles(plat *pjrtplatform.Platform, dev backend.DeviceNum, buffers []*pjrt.Buffer, expectedShapes []shapes.Shape) ([]backend.DeviceHandle, error) {
 	handles := make([]backend.DeviceHandle, len(buffers))
 	for i, buffer := range buffers {
-		bufferShape, err := bufferShape(buffer)
+		bShape, err := bufferShape(buffer)
 		if err != nil {
 			return nil, err
 		}
-		expectedShape := shapes[i]
-		if err := checkShape(bufferShape, expectedShape); err != nil {
+		expectedShape := expectedShapes[i]
+		if err := checkShape(bShape, expectedShape); err != nil {
 			return nil, err
 		}
 		handles[i], err = pjrtplatform.NewHandle(plat, dev, buffer, expectedShape)

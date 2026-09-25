@@ -16,9 +16,9 @@
 package platform
 
 import (
+	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gx-org/backend"
-	"github.com/gx-org/backend/shapes"
 )
 
 // Platform is the PJRT backend.
@@ -37,7 +37,7 @@ func (plat *Platform) Name() string {
 }
 
 // Send raw data to the device.
-func (plat *Platform) Send(dev backend.DeviceNum, data []byte, sh *shapes.Shape) (backend.DeviceHandle, error) {
+func (plat *Platform) Send(dev backend.DeviceNum, data []byte, sh shapes.Shape) (backend.DeviceHandle, error) {
 	return plat.send(dev, data, sh)
 }
 

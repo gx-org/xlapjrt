@@ -16,78 +16,74 @@
 package xlapjrt
 
 import (
-	"github.com/gomlx/gopjrt/dtypes"
+	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/dtypes/gotype"
+	"github.com/gomlx/compute/shapes"
+	pjtypes "github.com/gomlx/gopjrt/dtypes"
 	"github.com/gomlx/gopjrt/xlabuilder"
-	dtype "github.com/gx-org/backend/dtypes"
-	"github.com/gx-org/backend/shapes"
 )
 
 // Supported are the types supported by this backend.
 type Supported interface {
-	dtype.Supported
-	dtypes.Supported
+	gotype.Supported
+	pjtypes.Supported
 }
 
 // ToGXDType converts a gopjrt DType to a GX datatype.
-func ToGXDType(k dtypes.DType) dtype.DType {
+func ToGXDType(k pjtypes.DType) dtypes.DType {
 	switch k {
-	case dtypes.Bool:
-		return dtype.Bool
-	case dtypes.BFloat16:
-		return dtype.BFloat16
-	case dtypes.Float32:
-		return dtype.Float32
-	case dtypes.Float64:
-		return dtype.Float64
-	case dtypes.Int32:
-		return dtype.Int32
-	case dtypes.Int64:
-		return dtype.Int64
-	case dtypes.Uint32:
-		return dtype.Uint32
-	case dtypes.Uint64:
-		return dtype.Uint64
-	}
-	return dtype.InvalidDType
-}
-
-// ToDType converts a GX kind into a gopjrt DType.
-func ToDType(k dtype.DType) dtypes.DType {
-	switch k {
-	case dtype.Bool:
+	case pjtypes.Bool:
 		return dtypes.Bool
-	case dtype.BFloat16:
+	case pjtypes.BFloat16:
 		return dtypes.BFloat16
-	case dtype.Float32:
+	case pjtypes.Float32:
 		return dtypes.Float32
-	case dtype.Float64:
+	case pjtypes.Float64:
 		return dtypes.Float64
-	case dtype.Int:
-		return dtypes.Int64
-	case dtype.Int32:
+	case pjtypes.Int32:
 		return dtypes.Int32
-	case dtype.Int64:
+	case pjtypes.Int64:
 		return dtypes.Int64
-	case dtype.Uint32:
+	case pjtypes.Uint32:
 		return dtypes.Uint32
-	case dtype.Uint64:
+	case pjtypes.Uint64:
 		return dtypes.Uint64
 	}
 	return dtypes.InvalidDType
 }
 
+// ToPJDType converts a GX kind into a gopjrt DType.
+func ToPJDType(k dtypes.DType) pjtypes.DType {
+	switch k {
+	case dtypes.Bool:
+		return pjtypes.Bool
+	case dtypes.BFloat16:
+		return pjtypes.BFloat16
+	case dtypes.Float32:
+		return pjtypes.Float32
+	case dtypes.Float64:
+		return pjtypes.Float64
+	case dtypes.Int32:
+		return pjtypes.Int32
+	case dtypes.Int64:
+		return pjtypes.Int64
+	case dtypes.Uint32:
+		return pjtypes.Uint32
+	case dtypes.Uint64:
+		return pjtypes.Uint64
+	}
+	return pjtypes.InvalidDType
+}
+
 // ToShape converts a GX shape into a gopjrt/xla shape.
-func ToShape(shape *shapes.Shape) xlabuilder.Shape {
+func ToShape(shape shapes.Shape) xlabuilder.Shape {
 	return xlabuilder.Shape{
-		DType:      ToDType(shape.DType),
+		DType:      ToPJDType(shape.DType),
 		Dimensions: shape.Dimensions,
 	}
 }
 
 // ToGXShape converts a gopjrt shape into a GX shape.
-func ToGXShape(sh xlabuilder.Shape) *shapes.Shape {
-	return &shapes.Shape{
-		DType:      ToGXDType(sh.DType),
-		Dimensions: sh.Dimensions,
-	}
+func ToGXShape(sh xlabuilder.Shape) shapes.Shape {
+	return shapes.Make(ToGXDType(sh.DType), sh.Dimensions...)
 }
