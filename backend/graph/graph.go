@@ -445,14 +445,14 @@ func (g *Graph) ShiftLeft(x, y backend.Value) (backend.Value, error) {
 	return g.BinaryFunc(x, y, xlabuilder.ShiftLeft)
 }
 
-// ShiftRight returns a node shifting x right by y.
-func (g *Graph) ShiftRight(x, y backend.Value) (backend.Value, error) {
-	// We copy Go's behavior: "shift operators implement arithmetic shifts if the left operand is a
-	// signed integer and logical shifts if it is an unsigned integer".
-	if g.xlaHandle(x).Shape.DType.IsUnsigned() {
-		return g.BinaryFunc(x, y, xlabuilder.ShiftRightLogical)
-	}
-	return g.BinaryFunc(x, y, xlabuilder.ShiftRightArithmetic)
+// ShiftRightArithmetic returns a node shifting lhs right by rhs, preserving the sign bit.
+func (g *Graph) ShiftRightArithmetic(lhs, rhs backend.Value) (backend.Value, error) {
+	return g.BinaryFunc(lhs, rhs, xlabuilder.ShiftRightArithmetic)
+}
+
+// ShiftRightLogical returns a node shifting lhs right by rhs, ignoring the sign bit.
+func (g *Graph) ShiftRightLogical(lhs, rhs backend.Value) (backend.Value, error) {
+	return g.BinaryFunc(lhs, rhs, xlabuilder.ShiftRightLogical)
 }
 
 // BitwiseAnd returns a node computing bitwise AND of x and y.
