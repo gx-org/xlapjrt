@@ -605,43 +605,13 @@ func (g *Graph) Gather(x backend.Value, startIndices backend.Value, indexVectorA
 	return g.newNode(xlaOp), nil
 }
 
-// Set returns a node to set a slice in an array.
-func (g *Graph) Set(x, update backend.Value, position []backend.Value) (backend.Value, error) {
-	xOp := g.xlaHandle(x)
-	xShape := xOp.Shape
-	rank := len(xShape.Dimensions)
-	indexDType := g.xlaHandle(position[0]).Shape.DType
-	xlaPos := make([]*xlabuilder.Op, rank)
-	zeroLit, err := xlabuilder.NewScalarLiteralFromFloat64(0.0, indexDType)
+// DynamicUpdateSlice updates a slice in an array.
+func (g *Graph) DynamicUpdateSlice(operand, update backend.Value, startIndices []backend.Value) (backend.Value, error) {
+	xlaStartIndices, err := g.xlaHandles(startIndices)
 	if err != nil {
 		return nil, err
 	}
-	zeroOp, err := xlabuilder.Constant(g.builder, zeroLit)
-	if err != nil {
-		return nil, err
-	}
-	for i := 0; i < rank; i++ {
-		if i < len(position) {
-			xlaPos[i] = g.xlaHandle(position[i])
-		} else {
-			xlaPos[i] = zeroOp
-		}
-	}
-	updateShape := make([]int, rank)
-	for i := 0; i < rank; i++ {
-		if i < len(position) {
-			updateShape[i] = 1
-		} else {
-			updateShape[i] = xShape.Dimensions[i]
-		}
-	}
-	xlaUpdate := g.xlaHandle(update)
-	xlaUpdateReshaped, err := xlabuilder.Reshape(xlaUpdate, updateShape...)
-	if err != nil {
-		return nil, err
-	}
-
-	xlaRes, err := xlabuilder.DynamicUpdateSlice(xOp, xlaUpdateReshaped, xlaPos)
+	xlaRes, err := xlabuilder.DynamicUpdateSlice(g.xlaHandle(operand), g.xlaHandle(update), xlaStartIndices)
 	if err != nil {
 		return nil, err
 	}
