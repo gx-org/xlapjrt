@@ -62,7 +62,7 @@ func (g *Graph) ReduceSum(x backend.Value, axes []int) (backend.Value, error) {
 }
 
 // Transpose transposes the axes of x.
-func (g *Graph) Transpose(x backend.Value, permutation []int) (backend.Value, error) {
+func (g *Graph) Transpose(x backend.Value, permutation ...int) (backend.Value, error) {
 	xlaOp, err := xlabuilder.Transpose(g.xlaHandle(x), permutation...)
 	if err != nil {
 		return nil, err
