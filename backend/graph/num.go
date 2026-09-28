@@ -22,15 +22,6 @@ import (
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
-// Dot product between x and y.
-func (g *Graph) Dot(x, y backend.Value) (backend.Value, error) {
-	xlaOp, err := xlabuilder.Dot(g.xlaHandle(x), g.xlaHandle(y))
-	if err != nil {
-		return nil, err
-	}
-	return g.newNode(xlaOp), nil
-}
-
 // Iota creates a constant of the given shape with increasing numbers (starting from 0) on the given axis.
 func (g *Graph) Iota(shape shapes.Shape, iotaAxis int) (backend.Value, error) {
 	xlaOp, err := xlabuilder.Iota(g.builder, pjrtgx.ToShape(shape), iotaAxis)

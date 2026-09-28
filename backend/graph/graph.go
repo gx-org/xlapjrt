@@ -618,12 +618,11 @@ func (g *Graph) DynamicUpdateSlice(operand, update backend.Value, startIndices [
 	return g.newNode(xlaRes), nil
 }
 
-// DotGeneral returns a generic dot product node. Batch and reduce axes are given as pairs of
-// equal-length slices, left hand axes followed by right hand axes.
-func (g *Graph) DotGeneral(x, y backend.Value, batchAxes, reduceAxes [2][]int) (backend.Value, error) {
+// DotGeneral returns a generic dot product node.
+func (g *Graph) DotGeneral(lhs backend.Value, lhsContractingAxes, lhsBatchAxes []int, rhs backend.Value, rhsContractingAxes, rhsBatchAxes []int, config backend.DotGeneralConfig) (backend.Value, error) {
 	xlaOp, err := xlabuilder.DotGeneral(
-		g.xlaHandle(x), reduceAxes[0], batchAxes[0],
-		g.xlaHandle(y), reduceAxes[1], batchAxes[1])
+		g.xlaHandle(lhs), lhsContractingAxes, lhsBatchAxes,
+		g.xlaHandle(rhs), rhsContractingAxes, rhsBatchAxes)
 	if err != nil {
 		return nil, err
 	}
