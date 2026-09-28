@@ -64,12 +64,12 @@ func (g *Graph) Split(x backend.Value, axis int, numSplits int) (backend.Value, 
 		reshapedNodes[i] = reshapedNode
 	}
 
-	return g.Concat(0, reshapedNodes)
+	return g.Concatenate(0, reshapedNodes...)
 }
 
-// Concat concatenates multiple arrays into a single array.
-func (g *Graph) Concat(axis int, nodes []backend.Value) (backend.Value, error) {
-	inputs, err := g.xlaHandles(nodes)
+// Concatenate concatenates multiple arrays into a single array.
+func (g *Graph) Concatenate(axis int, operands ...backend.Value) (backend.Value, error) {
+	inputs, err := g.xlaHandles(operands)
 	if err != nil {
 		return nil, err
 	}
