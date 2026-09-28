@@ -44,7 +44,7 @@ func (g *Graph) ArgMinMax(x backend.Value, axis int, outputDType dtypes.DType, i
 // and initial value to reduce x on the given axes, by taking the max value.
 //
 // If no axes are given, it reduces the full array.
-func (g *Graph) ReduceMax(x backend.Value, axes []int) (backend.Value, error) {
+func (g *Graph) ReduceMax(x backend.Value, axes ...int) (backend.Value, error) {
 	xlaOp, err := xlabuilder.ReduceMax(g.xlaHandle(x), axes...)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (g *Graph) ReduceMax(x backend.Value, axes []int) (backend.Value, error) {
 }
 
 // ReduceSum sums over axes.
-func (g *Graph) ReduceSum(x backend.Value, axes []int) (backend.Value, error) {
+func (g *Graph) ReduceSum(x backend.Value, axes ...int) (backend.Value, error) {
 	xlaOp, err := xlabuilder.ReduceSum(g.xlaHandle(x), axes...)
 	if err != nil {
 		return nil, err
