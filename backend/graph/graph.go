@@ -559,32 +559,12 @@ func ToXLATuple(n backend.Value) backend.Tuple {
 }
 
 // Slice returns a slice on a node.
-func (g *Graph) Slice(x backend.Value, i int) (backend.Value, error) {
-	shape := x.(pjrtNode).BackendShape()
-	rank := len(shape.Dimensions)
-
-	starts := make([]int, rank)
-	limits := make([]int, rank)
-	strides := make([]int, rank)
-	for axis, axisSize := range shape.Dimensions {
-		starts[axis] = 0
-		limits[axis] = axisSize
-		strides[axis] = 1
-	}
-
-	starts[0] = i
-	limits[0] = i + 1
-
+func (g *Graph) Slice(x backend.Value, starts, limits, strides []int) (backend.Value, error) {
 	sliceOp, err := xlabuilder.Slice(g.xlaHandle(x), starts, limits, strides)
 	if err != nil {
 		return nil, err
 	}
-	// Slice doesn't reduce rank, so insert an additional Reshape to handle it.
-	reshapeOp, err := xlabuilder.Reshape(sliceOp, shape.Dimensions[1:]...)
-	if err != nil {
-		return nil, err
-	}
-	return g.newNode(reshapeOp), nil
+	return g.newNode(sliceOp), nil
 }
 
 // BroadcastInDim broadcasts x to an output with the given shape.

@@ -15,57 +15,9 @@
 package graph
 
 import (
-	"github.com/pkg/errors"
 	"github.com/gomlx/gopjrt/xlabuilder"
 	"github.com/gx-org/backend"
 )
-
-// Split implements the split operation in terms of slice, with static indices.
-func (g *Graph) Split(x backend.Value, axis int, numSplits int) (backend.Value, error) {
-	shap := x.(pjrtNode).BackendShape()
-	rank := len(shap.Dimensions)
-
-	if axis < 0 || axis >= rank {
-		return nil, errors.Errorf("axis %d is out of bounds for rank %d", axis, rank)
-	}
-	if shap.Dimensions[axis]%numSplits != 0 {
-		return nil, errors.Errorf("axis %d has size %d which is not divisible by %d numSplits", axis, shap.Dimensions[axis], numSplits)
-	}
-	stride := shap.Dimensions[axis] / numSplits
-	slicedNodes := make([]backend.Value, numSplits)
-	for i := range numSplits {
-		starts := make([]int, rank)
-		limits := make([]int, rank)
-		strides := make([]int, rank)
-		for axis, axisSize := range shap.Dimensions {
-			limits[axis] = axisSize
-			strides[axis] = 1
-		}
-
-		starts[axis] = i * stride
-		limits[axis] = i*stride + stride
-		xlaOp, err := xlabuilder.Slice(g.xlaHandle(x), starts, limits, strides)
-		if err != nil {
-			return nil, err
-		}
-
-		slicedNodes[i] = g.newNode(xlaOp)
-	}
-
-	outputDims := append([]int{1}, shap.Dimensions...)
-	outputDims[axis+1] = stride
-
-	reshapedNodes := make([]backend.Value, numSplits)
-	for i := range slicedNodes {
-		reshapedNode, err := g.Reshape(slicedNodes[i], outputDims)
-		if err != nil {
-			return nil, err
-		}
-		reshapedNodes[i] = reshapedNode
-	}
-
-	return g.Concatenate(0, reshapedNodes...)
-}
 
 // Concatenate concatenates multiple arrays into a single array.
 func (g *Graph) Concatenate(axis int, operands ...backend.Value) (backend.Value, error) {
