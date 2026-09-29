@@ -481,8 +481,8 @@ func (g *Graph) LogicalOr(x, y backend.Value) (backend.Value, error) {
 }
 
 // Reshape returns a reshape operator node.
-func (g *Graph) Reshape(x backend.Value, axisLengths []int) (backend.Value, error) {
-	xlaOp, err := xlabuilder.Reshape(g.xlaHandle(x), axisLengths...)
+func (g *Graph) Reshape(x backend.Value, dimensions ...int) (backend.Value, error) {
+	xlaOp, err := xlabuilder.Reshape(g.xlaHandle(x), dimensions...)
 	if err != nil {
 		return nil, err
 	}
