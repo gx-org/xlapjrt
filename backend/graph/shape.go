@@ -15,12 +15,12 @@
 package graph
 
 import (
+	"google3/third_party/golang/github_com/gomlx/compute/v/v0/compute"
 	"github.com/gomlx/gopjrt/xlabuilder"
-	"github.com/gx-org/backend"
 )
 
 // Concatenate concatenates multiple arrays into a single array.
-func (g *Graph) Concatenate(axis int, operands ...backend.Value) (backend.Value, error) {
+func (g *Graph) Concatenate(axis int, operands ...compute.Value) (compute.Value, error) {
 	inputs, err := g.xlaHandles(operands)
 	if err != nil {
 		return nil, err

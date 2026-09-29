@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"google3/third_party/golang/github_com/gomlx/compute/v/v0/compute"
 	"github.com/gomlx/compute/dtypes/bfloat16"
 	"github.com/gomlx/compute/dtypes"
 	"github.com/gomlx/compute/shapes"
@@ -40,6 +41,8 @@ type (
 		inputs *tuple
 
 		plat       *pjrtplatform.Platform
+		bld        backend.Builder
+		parent     backend.Function
 		builder    *xlabuilder.XlaBuilder
 		executable *pjrt.LoadedExecutable
 
@@ -49,8 +52,6 @@ type (
 	}
 
 	pjrtNode interface {
-		backend.Value
-
 		xlaOp() *xlabuilder.Op
 
 		BackendShape() shapes.Shape
@@ -62,13 +63,15 @@ var (
 )
 
 // New returns a new graph.
-func New(plat *pjrtplatform.Platform, funcName string, shapes []shapes.Shape) (*Graph, error) {
-	return newGraph(plat, shapes, xlabuilder.New(funcName))
+func New(plat *pjrtplatform.Platform, bld backend.Builder, funcName string, shapes []shapes.Shape) (*Graph, error) {
+	return newGraph(plat, bld, nil, shapes, xlabuilder.New(funcName))
 }
 
-func newGraph(plat *pjrtplatform.Platform, shapes []shapes.Shape, builder *xlabuilder.XlaBuilder) (*Graph, error) {
+func newGraph(plat *pjrtplatform.Platform, bld backend.Builder, parent backend.Function, shapes []shapes.Shape, builder *xlabuilder.XlaBuilder) (*Graph, error) {
 	g := &Graph{
 		plat:    plat,
+		bld:     bld,
+		parent:  parent,
 		builder: builder,
 	}
 	var err error
@@ -95,7 +98,7 @@ func (g *Graph) buildTupleArgument(shapes []shapes.Shape) (*tuple, error) {
 	return &tuple{Node: g.newNode(xlaOp).Info(argTuple)}, nil
 }
 
-func (g *Graph) tupleArgument(got shapes.Shape, name string, index int) (backend.Value, error) {
+func (g *Graph) tupleArgument(got shapes.Shape, name string, index int) (compute.Value, error) {
 	op, err := g.inputs.element(index)
 	if err != nil {
 		return nil, err
@@ -107,8 +110,8 @@ func (g *Graph) tupleArgument(got shapes.Shape, name string, index int) (backend
 	return op.Info("[%s]", name), nil
 }
 
-func unpackOutput(outs []*backend.OutputNode) ([]backend.Value, []shapes.Shape) {
-	nodes := make([]backend.Value, len(outs))
+func unpackOutput(outs []*backend.OutputNode) ([]compute.Value, []shapes.Shape) {
+	nodes := make([]compute.Value, len(outs))
 	shs := make([]shapes.Shape, len(outs))
 	for i, out := range outs {
 		nodes[i] = out.Node
@@ -120,10 +123,10 @@ func unpackOutput(outs []*backend.OutputNode) ([]backend.Value, []shapes.Shape) 
 // Compile a node given a set of parameters and using this node as an output.
 // Returns a function that will be run on a device given some inputs.
 func (g *Graph) Compile(dev backend.DeviceNum, out, traced []*backend.OutputNode, params []shapes.Shape) (backend.Executable, error) {
-	var outNodes, tracedNodes []backend.Value
+	var outNodes, tracedNodes []compute.Value
 	outNodes, g.out = unpackOutput(out)
 	tracedNodes, g.traced = unpackOutput(traced)
-	all := append(append([]backend.Value{}, outNodes...), tracedNodes...)
+	all := append(append([]compute.Value{}, outNodes...), tracedNodes...)
 	allTuple, err := g.Tuple(all)
 	if err != nil {
 		return nil, err
@@ -154,9 +157,28 @@ func (g *Graph) Platform() backend.Platform {
 	return g.plat
 }
 
-// Graph in which nodes are created.
-func (g *Graph) Graph() backend.Function {
-	return g
+// Name of the function.
+func (g *Graph) Name() string {
+	return g.builder.Name()
+}
+
+// Builder returns the builder of which this function is part of.
+func (g *Graph) Builder() backend.Builder {
+	return g.bld
+}
+
+// Parent returns the parent function of the current function.
+func (g *Graph) Parent() backend.Function {
+	return g.parent
+}
+
+// Shape returns the shape of the given Value.
+func (g *Graph) Shape(v compute.Value) (shapes.Shape, error) {
+	n, ok := v.(pjrtNode)
+	if !ok {
+		return shapes.Invalid(), errors.Errorf("invalid value type %T", v)
+	}
+	return n.BackendShape(), nil
 }
 
 // Executable returns the PJRT executable.
@@ -170,16 +192,16 @@ type Node struct {
 	op    *xlabuilder.Op
 
 	info string
-	deps []backend.Value // Only used for debugging.
+	deps []compute.Value // Only used for debugging.
 }
 
 var _ pjrtNode = (*Node)(nil)
 
-func (g *Graph) xlaHandle(input backend.Value) *xlabuilder.Op {
+func (g *Graph) xlaHandle(input compute.Value) *xlabuilder.Op {
 	return input.(pjrtNode).xlaOp()
 }
 
-func (g *Graph) xlaHandles(inputs []backend.Value) ([]*xlabuilder.Op, error) {
+func (g *Graph) xlaHandles(inputs []compute.Value) ([]*xlabuilder.Op, error) {
 	hdls := make([]*xlabuilder.Op, len(inputs))
 	for i, node := range inputs {
 		hdls[i] = node.(pjrtNode).xlaOp()
@@ -187,7 +209,7 @@ func (g *Graph) xlaHandles(inputs []backend.Value) ([]*xlabuilder.Op, error) {
 	return hdls, nil
 }
 
-func (g *Graph) newNode(op *xlabuilder.Op, deps ...backend.Value) *Node {
+func (g *Graph) newNode(op *xlabuilder.Op, deps ...compute.Value) *Node {
 	return &Node{graph: g, op: op, deps: deps}
 }
 
@@ -197,23 +219,10 @@ func (n *Node) Info(format string, a ...any) *Node {
 	return n
 }
 
-// Graph to which the node belongs to.
-func (n *Node) Graph() backend.Function {
-	return n.graph
-}
-
 // BackendShape returns the shape inferred by a backend,
 // as opposed to a shape inferred by GX.
 func (n *Node) BackendShape() shapes.Shape {
 	return pjrtgx.ToGXShape(n.op.Shape)
-}
-
-// PJRTDims returns the dimension of the node computed by PJRT.
-// TODO(degris): remove once the interpreter can compute the axis lengths.
-//
-// Deprecated: temporary function used as a workaround.
-func (n *Node) PJRTDims() []int {
-	return n.xlaOp().Shape.Dimensions
 }
 
 func (n *Node) xlaOp() *xlabuilder.Op {
@@ -245,7 +254,7 @@ func newLiteral[T pjtypes.Supported](data []T, dims []int) (*xlabuilder.Literal,
 }
 
 // Constant returns a node representing a numerical constant value in the graph.
-func (g *Graph) Constant(data []byte, shap shapes.Shape) (backend.Value, error) {
+func (g *Graph) Constant(data []byte, shap shapes.Shape) (compute.Value, error) {
 	var literal *xlabuilder.Literal
 	var err error
 	switch shap.DType {
@@ -279,7 +288,7 @@ func (g *Graph) Constant(data []byte, shap shapes.Shape) (backend.Value, error) 
 }
 
 // NewAtomLiteral creates a node from a constant atom.
-func (g *Graph) NewAtomLiteral(v any) (backend.Value, error) {
+func (g *Graph) NewAtomLiteral(v any) (compute.Value, error) {
 	var lit *xlabuilder.Literal
 	var err error
 	switch vT := v.(type) {
@@ -301,7 +310,7 @@ func (g *Graph) NewAtomLiteral(v any) (backend.Value, error) {
 }
 
 // NewArrayLiteral creates a node from a constant array.
-func (g *Graph) NewArrayLiteral(flat any, axlengths ...int) (backend.Value, error) {
+func (g *Graph) NewArrayLiteral(flat any, axlengths ...int) (compute.Value, error) {
 	var lit *xlabuilder.Literal
 	var err error
 	switch flatT := flat.(type) {
@@ -325,7 +334,7 @@ func (g *Graph) NewArrayLiteral(flat any, axlengths ...int) (backend.Value, erro
 }
 
 // Argument returns a node set by a caller when calling the function.
-func (g *Graph) Argument(name string, shape shapes.Shape, index int) (node backend.Value, err error) {
+func (g *Graph) Argument(name string, shape shapes.Shape, index int) (node compute.Value, err error) {
 	if g.inputs != nil {
 		return g.tupleArgument(shape, name, index)
 	}
@@ -339,7 +348,7 @@ func (g *Graph) Argument(name string, shape shapes.Shape, index int) (node backe
 }
 
 // UnaryFunc returns a node executing a unary function. f must be an xlabuilder function pointer.
-func (g *Graph) UnaryFunc(x backend.Value, f func(*xlabuilder.Op) (*xlabuilder.Op, error)) (backend.Value, error) {
+func (g *Graph) UnaryFunc(x compute.Value, f func(*xlabuilder.Op) (*xlabuilder.Op, error)) (compute.Value, error) {
 	result, err := f(g.xlaHandle(x))
 	if err != nil {
 		return nil, err
@@ -348,7 +357,7 @@ func (g *Graph) UnaryFunc(x backend.Value, f func(*xlabuilder.Op) (*xlabuilder.O
 }
 
 // BinaryFunc returns a node executing a binary function. f must be an xlabuilder function pointer.
-func (g *Graph) BinaryFunc(x backend.Value, y backend.Value, f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, error)) (backend.Value, error) {
+func (g *Graph) BinaryFunc(x compute.Value, y compute.Value, f func(x *xlabuilder.Op, y *xlabuilder.Op) (*xlabuilder.Op, error)) (compute.Value, error) {
 	result, err := f(g.xlaHandle(x), g.xlaHandle(y))
 	if err != nil {
 		return nil, err
@@ -357,7 +366,7 @@ func (g *Graph) BinaryFunc(x backend.Value, y backend.Value, f func(x *xlabuilde
 }
 
 // ReduceFunc returns a node executing a basic reduction. f must be an xlabuilder function pointer.
-func (g *Graph) ReduceFunc(x backend.Value, axes []int, f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) (backend.Value, error) {
+func (g *Graph) ReduceFunc(x compute.Value, axes []int, f func(*xlabuilder.Op, ...int) (*xlabuilder.Op, error)) (compute.Value, error) {
 	// Note the change from XLA's behavior: if no reduction axes are specified, treat this as a no-op.
 	if len(axes) == 0 {
 		return x, nil
@@ -370,118 +379,118 @@ func (g *Graph) ReduceFunc(x backend.Value, axes []int, f func(*xlabuilder.Op, .
 }
 
 // LogicalNot returns a node computing the logical not of x.
-func (g *Graph) LogicalNot(x backend.Value) (backend.Value, error) {
+func (g *Graph) LogicalNot(x compute.Value) (compute.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.LogicalNot)
 }
 
 // Neg returns a node computing the negation of x.
-func (g *Graph) Neg(x backend.Value) (backend.Value, error) {
+func (g *Graph) Neg(x compute.Value) (compute.Value, error) {
 	return g.UnaryFunc(x, xlabuilder.Neg)
 }
 
 // Add returns a node adding two nodes.
-func (g *Graph) Add(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) Add(x, y compute.Value) (compute.Value, error) {
 	return g.BinaryFunc(x, y, xlabuilder.Add)
 }
 
 // Sub returns a node subtracting y from x.
-func (g *Graph) Sub(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) Sub(x, y compute.Value) (compute.Value, error) {
 	return g.BinaryFunc(x, y, xlabuilder.Sub)
 }
 
 // Mul returns a node multiplying two nodes.
-func (g *Graph) Mul(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) Mul(x, y compute.Value) (compute.Value, error) {
 	return g.BinaryFunc(x, y, xlabuilder.Mul)
 }
 
 // Div returns a node dividing x by y.
-func (g *Graph) Div(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) Div(x, y compute.Value) (compute.Value, error) {
 	return g.BinaryFunc(x, y, xlabuilder.Div)
 }
 
 // Rem returns a node computing remainder of x divided by y.
-func (g *Graph) Rem(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) Rem(x, y compute.Value) (compute.Value, error) {
 	return g.BinaryFunc(x, y, xlabuilder.Rem)
 }
 
 // Equal returns a boolean node checking if x == y.
-func (g *Graph) Equal(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) Equal(x, y compute.Value) (compute.Value, error) {
 	// TODO(paulchang): If both operands are floating-point, use TotalOrder comparisons.
 	return g.BinaryFunc(x, y, xlabuilder.Equal)
 }
 
 // NotEqual returns a boolean node checking if x != y.
-func (g *Graph) NotEqual(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) NotEqual(x, y compute.Value) (compute.Value, error) {
 	// TODO(paulchang): If both operands are floating-point, use TotalOrder comparisons.
 	return g.BinaryFunc(x, y, xlabuilder.NotEqual)
 }
 
 // LessThan returns a boolean node checking if x < y.
-func (g *Graph) LessThan(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) LessThan(x, y compute.Value) (compute.Value, error) {
 	// TODO(paulchang): If both operands are floating-point, use TotalOrder comparisons.
 	return g.BinaryFunc(x, y, xlabuilder.LessThan)
 }
 
 // LessOrEqual returns a boolean node checking if x <= y.
-func (g *Graph) LessOrEqual(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) LessOrEqual(x, y compute.Value) (compute.Value, error) {
 	// TODO(paulchang): If both operands are floating-point, use TotalOrder comparisons.
 	return g.BinaryFunc(x, y, xlabuilder.LessOrEqual)
 }
 
 // GreaterThan returns a boolean node checking if x > y.
-func (g *Graph) GreaterThan(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) GreaterThan(x, y compute.Value) (compute.Value, error) {
 	// TODO(paulchang): If both operands are floating-point, use TotalOrder comparisons.
 	return g.BinaryFunc(x, y, xlabuilder.GreaterThan)
 }
 
 // GreaterOrEqual returns a boolean node checking if x >= y.
-func (g *Graph) GreaterOrEqual(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) GreaterOrEqual(x, y compute.Value) (compute.Value, error) {
 	// TODO(paulchang): If both operands are floating-point, use TotalOrder comparisons.
 	return g.BinaryFunc(x, y, xlabuilder.GreaterOrEqual)
 }
 
 // ShiftLeft returns a node shifting x left by y.
-func (g *Graph) ShiftLeft(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) ShiftLeft(x, y compute.Value) (compute.Value, error) {
 	return g.BinaryFunc(x, y, xlabuilder.ShiftLeft)
 }
 
 // ShiftRightArithmetic returns a node shifting lhs right by rhs, preserving the sign bit.
-func (g *Graph) ShiftRightArithmetic(lhs, rhs backend.Value) (backend.Value, error) {
+func (g *Graph) ShiftRightArithmetic(lhs, rhs compute.Value) (compute.Value, error) {
 	return g.BinaryFunc(lhs, rhs, xlabuilder.ShiftRightArithmetic)
 }
 
 // ShiftRightLogical returns a node shifting lhs right by rhs, ignoring the sign bit.
-func (g *Graph) ShiftRightLogical(lhs, rhs backend.Value) (backend.Value, error) {
+func (g *Graph) ShiftRightLogical(lhs, rhs compute.Value) (compute.Value, error) {
 	return g.BinaryFunc(lhs, rhs, xlabuilder.ShiftRightLogical)
 }
 
 // BitwiseAnd returns a node computing bitwise AND of x and y.
-func (g *Graph) BitwiseAnd(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) BitwiseAnd(x, y compute.Value) (compute.Value, error) {
 	return g.BinaryFunc(x, y, xlabuilder.BitwiseAnd)
 }
 
 // BitwiseOr returns a node computing bitwise OR of x and y.
-func (g *Graph) BitwiseOr(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) BitwiseOr(x, y compute.Value) (compute.Value, error) {
 	return g.BinaryFunc(x, y, xlabuilder.BitwiseOr)
 }
 
 // BitwiseXor returns a node computing bitwise XOR of x and y.
-func (g *Graph) BitwiseXor(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) BitwiseXor(x, y compute.Value) (compute.Value, error) {
 	return g.BinaryFunc(x, y, xlabuilder.BitwiseXor)
 }
 
 // LogicalAnd returns a node computing logical AND of x and y.
-func (g *Graph) LogicalAnd(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) LogicalAnd(x, y compute.Value) (compute.Value, error) {
 	return g.BinaryFunc(x, y, xlabuilder.LogicalAnd)
 }
 
 // LogicalOr returns a node computing logical OR of x and y.
-func (g *Graph) LogicalOr(x, y backend.Value) (backend.Value, error) {
+func (g *Graph) LogicalOr(x, y compute.Value) (compute.Value, error) {
 	return g.BinaryFunc(x, y, xlabuilder.LogicalOr)
 }
 
 // Reshape returns a reshape operator node.
-func (g *Graph) Reshape(x backend.Value, dimensions ...int) (backend.Value, error) {
+func (g *Graph) Reshape(x compute.Value, dimensions ...int) (compute.Value, error) {
 	xlaOp, err := xlabuilder.Reshape(g.xlaHandle(x), dimensions...)
 	if err != nil {
 		return nil, err
@@ -490,7 +499,7 @@ func (g *Graph) Reshape(x backend.Value, dimensions ...int) (backend.Value, erro
 }
 
 // ConvertDType returns a cast/convert operator node.
-func (g *Graph) ConvertDType(x backend.Value, dtype dtypes.DType) (backend.Value, error) {
+func (g *Graph) ConvertDType(x compute.Value, dtype dtypes.DType) (compute.Value, error) {
 	xlaDType := pjrtgx.ToPJDType(dtype)
 	if xlaDType == pjtypes.InvalidDType {
 		return nil, errors.Errorf("cannot convert %s to a XLA data type", dtype.String())
@@ -516,7 +525,7 @@ func (n *tuple) element(i int) (*Node, error) {
 }
 
 // Element returns a Node representing the ith element of the tuple.
-func (n *tuple) Element(i int) (backend.Value, error) {
+func (n *tuple) Element(i int) (compute.Value, error) {
 	return n.element(i)
 }
 
@@ -525,8 +534,8 @@ func (n *tuple) Size() int {
 	return n.Node.op.Shape.TupleSize()
 }
 
-func (n *tuple) Unpack() ([]backend.Value, error) {
-	nodes := make([]backend.Value, 0, n.Size())
+func (n *tuple) Unpack() ([]compute.Value, error) {
+	nodes := make([]compute.Value, 0, n.Size())
 	for i := range n.Size() {
 		node, err := n.Element(i)
 		if err != nil {
@@ -538,7 +547,7 @@ func (n *tuple) Unpack() ([]backend.Value, error) {
 }
 
 // Tuple returns a node grouping multiple nodes together.
-func (g *Graph) Tuple(nodes []backend.Value) (backend.Tuple, error) {
+func (g *Graph) Tuple(nodes []compute.Value) (backend.Tuple, error) {
 	inputs, err := g.xlaHandles(nodes)
 	if err != nil {
 		return nil, err
@@ -551,7 +560,7 @@ func (g *Graph) Tuple(nodes []backend.Value) (backend.Tuple, error) {
 }
 
 // ToXLATuple casts a generic Node to a graph.Tuple node.
-func ToXLATuple(n backend.Value) backend.Tuple {
+func ToXLATuple(n compute.Value) backend.Tuple {
 	if tpl, ok := n.(*tuple); ok {
 		return tpl
 	}
@@ -559,7 +568,7 @@ func ToXLATuple(n backend.Value) backend.Tuple {
 }
 
 // Slice returns a slice on a node.
-func (g *Graph) Slice(x backend.Value, starts, limits, strides []int) (backend.Value, error) {
+func (g *Graph) Slice(x compute.Value, starts, limits, strides []int) (compute.Value, error) {
 	sliceOp, err := xlabuilder.Slice(g.xlaHandle(x), starts, limits, strides)
 	if err != nil {
 		return nil, err
@@ -568,7 +577,7 @@ func (g *Graph) Slice(x backend.Value, starts, limits, strides []int) (backend.V
 }
 
 // BroadcastInDim broadcasts x to an output with the given shape.
-func (g *Graph) BroadcastInDim(x backend.Value, shape shapes.Shape, broadcastAxes []int) (backend.Value, error) {
+func (g *Graph) BroadcastInDim(x compute.Value, shape shapes.Shape, broadcastAxes []int) (compute.Value, error) {
 	xlaOp, err := xlabuilder.BroadcastInDim(g.xlaHandle(x), pjrtgx.ToShape(shape), broadcastAxes)
 	if err != nil {
 		return nil, err
@@ -577,7 +586,7 @@ func (g *Graph) BroadcastInDim(x backend.Value, shape shapes.Shape, broadcastAxe
 }
 
 // Gather exposes the full XLA Gather operation.
-func (g *Graph) Gather(x backend.Value, startIndices backend.Value, indexVectorAxis int, offsetAxes []int, collapsedSliceAxes []int, startIndexMap []int, sliceSizes []int, indicesAreSorted bool) (backend.Value, error) {
+func (g *Graph) Gather(x compute.Value, startIndices compute.Value, indexVectorAxis int, offsetAxes []int, collapsedSliceAxes []int, startIndexMap []int, sliceSizes []int, indicesAreSorted bool) (compute.Value, error) {
 	xlaOp, err := xlabuilder.Gather(g.xlaHandle(x), g.xlaHandle(startIndices), indexVectorAxis, offsetAxes, collapsedSliceAxes, startIndexMap, sliceSizes, indicesAreSorted)
 	if err != nil {
 		return nil, err
@@ -586,7 +595,7 @@ func (g *Graph) Gather(x backend.Value, startIndices backend.Value, indexVectorA
 }
 
 // DynamicUpdateSlice updates a slice in an array.
-func (g *Graph) DynamicUpdateSlice(operand, update backend.Value, startIndices []backend.Value) (backend.Value, error) {
+func (g *Graph) DynamicUpdateSlice(operand, update compute.Value, startIndices []compute.Value) (compute.Value, error) {
 	xlaStartIndices, err := g.xlaHandles(startIndices)
 	if err != nil {
 		return nil, err
@@ -599,7 +608,7 @@ func (g *Graph) DynamicUpdateSlice(operand, update backend.Value, startIndices [
 }
 
 // DotGeneral returns a generic dot product node.
-func (g *Graph) DotGeneral(lhs backend.Value, lhsContractingAxes, lhsBatchAxes []int, rhs backend.Value, rhsContractingAxes, rhsBatchAxes []int, config backend.DotGeneralConfig) (backend.Value, error) {
+func (g *Graph) DotGeneral(lhs compute.Value, lhsContractingAxes, lhsBatchAxes []int, rhs compute.Value, rhsContractingAxes, rhsBatchAxes []int, config backend.DotGeneralConfig) (compute.Value, error) {
 	xlaOp, err := xlabuilder.DotGeneral(
 		g.xlaHandle(lhs), lhsContractingAxes, lhsBatchAxes,
 		g.xlaHandle(rhs), rhsContractingAxes, rhsBatchAxes)
@@ -610,7 +619,7 @@ func (g *Graph) DotGeneral(lhs backend.Value, lhsContractingAxes, lhsBatchAxes [
 }
 
 // Call returns a node that invokes a subgraph with the given result node.
-func (g *Graph) Call(sg *backend.Subgraph, args ...backend.Value) (backend.Value, error) {
+func (g *Graph) Call(sg *backend.Subgraph, args ...compute.Value) (compute.Value, error) {
 	subcomp, err := g.xlaSubcomputation(sg)
 	if err != nil {
 		return nil, err
@@ -624,7 +633,7 @@ func (g *Graph) Call(sg *backend.Subgraph, args ...backend.Value) (backend.Value
 	if err != nil {
 		return nil, err
 	}
-	var result backend.Value = g.newNode(xlaOp, subcomp)
+	var result compute.Value = g.newNode(xlaOp, subcomp)
 	if _, ok := sg.Result.Node.(backend.Tuple); ok {
 		// If the result node was a tuple, the subgraph's return value will also be a tuple.
 		result = ToXLATuple(result)
@@ -636,11 +645,11 @@ func (g *Graph) Call(sg *backend.Subgraph, args ...backend.Value) (backend.Value
 func (g *Graph) Subgraph(name string, inputs []shapes.Shape) (backend.Function, error) {
 	subName := g.builder.Name() + "." + name
 	builder := g.builder.CreateSubBuilder(subName)
-	return newGraph(g.plat, inputs, builder)
+	return newGraph(g.plat, g.bld, g, inputs, builder)
 }
 
 type subGraph struct {
-	out   backend.Value
+	out   compute.Value
 	comp  *xlabuilder.XlaComputation
 	graph *Graph
 }
@@ -657,10 +666,6 @@ func (g *Graph) xlaSubcomputation(sg *backend.Subgraph) (*subGraph, error) {
 	return sub, nil
 }
 
-func (sub *subGraph) Graph() backend.Function {
-	return sub.graph
-}
-
 func (sub *subGraph) String() string {
 	bld := strings.Builder{}
 	fmt.Fprintf(&bld, "SUBGRAPH(%s){\n", sub.graph.builder.Name())
@@ -673,7 +678,7 @@ func (sub *subGraph) String() string {
 }
 
 // While returns a while loop node.
-func (g *Graph) While(cond, body *backend.Subgraph, state backend.Value) (backend.Value, error) {
+func (g *Graph) While(cond, body *backend.Subgraph, state compute.Value) (compute.Value, error) {
 	condSG, err := g.xlaSubcomputation(cond)
 	if err != nil {
 		return nil, err
@@ -687,7 +692,7 @@ func (g *Graph) While(cond, body *backend.Subgraph, state backend.Value) (backen
 	if err != nil {
 		return nil, err
 	}
-	var result backend.Value = g.newNode(xlaOp, condSG, bodySG)
+	var result compute.Value = g.newNode(xlaOp, condSG, bodySG)
 	if _, ok := state.(backend.Tuple); ok {
 		result = ToXLATuple(result)
 	}

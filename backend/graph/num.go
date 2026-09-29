@@ -15,15 +15,15 @@
 package graph
 
 import (
+	"google3/third_party/golang/github_com/gomlx/compute/v/v0/compute"
 	"github.com/gomlx/compute/dtypes"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/xlabuilder"
-	"github.com/gx-org/backend"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
 // Iota creates a constant of the given shape with increasing numbers (starting from 0) on the given axis.
-func (g *Graph) Iota(shape shapes.Shape, iotaAxis int) (backend.Value, error) {
+func (g *Graph) Iota(shape shapes.Shape, iotaAxis int) (compute.Value, error) {
 	xlaOp, err := xlabuilder.Iota(g.builder, pjrtgx.ToShape(shape), iotaAxis)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func (g *Graph) Iota(shape shapes.Shape, iotaAxis int) (backend.Value, error) {
 }
 
 // ArgMinMax returns a new argmin/argmax node.
-func (g *Graph) ArgMinMax(x backend.Value, axis int, outputDType dtypes.DType, isMin bool) (backend.Value, error) {
+func (g *Graph) ArgMinMax(x compute.Value, axis int, outputDType dtypes.DType, isMin bool) (compute.Value, error) {
 	xlaOp, err := xlabuilder.ArgMinMax(g.xlaHandle(x), axis, pjrtgx.ToPJDType(outputDType), isMin)
 	if err != nil {
 		return nil, err
@@ -44,7 +44,7 @@ func (g *Graph) ArgMinMax(x backend.Value, axis int, outputDType dtypes.DType, i
 // and initial value to reduce x on the given axes, by taking the max value.
 //
 // If no axes are given, it reduces the full array.
-func (g *Graph) ReduceMax(x backend.Value, axes ...int) (backend.Value, error) {
+func (g *Graph) ReduceMax(x compute.Value, axes ...int) (compute.Value, error) {
 	xlaOp, err := xlabuilder.ReduceMax(g.xlaHandle(x), axes...)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (g *Graph) ReduceMax(x backend.Value, axes ...int) (backend.Value, error) {
 }
 
 // ReduceSum sums over axes.
-func (g *Graph) ReduceSum(x backend.Value, axes ...int) (backend.Value, error) {
+func (g *Graph) ReduceSum(x compute.Value, axes ...int) (compute.Value, error) {
 	xlaOp, err := xlabuilder.ReduceSum(g.xlaHandle(x), axes...)
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (g *Graph) ReduceSum(x backend.Value, axes ...int) (backend.Value, error) {
 }
 
 // Transpose transposes the axes of x.
-func (g *Graph) Transpose(x backend.Value, permutation ...int) (backend.Value, error) {
+func (g *Graph) Transpose(x compute.Value, permutation ...int) (compute.Value, error) {
 	xlaOp, err := xlabuilder.Transpose(g.xlaHandle(x), permutation...)
 	if err != nil {
 		return nil, err

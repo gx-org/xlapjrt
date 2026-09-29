@@ -69,14 +69,15 @@ func (b *pBackend) Platform() backend.Platform {
 
 // Builder returns a new XLA computation builder.
 func (b *pBackend) Builder(funcName string) (backend.Builder, error) {
-	fn, err := pjrtgraph.New(b.plat, funcName, nil)
+	bld := &builderImpl{
+		name: funcName,
+	}
+	fn, err := pjrtgraph.New(b.plat, bld, funcName, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &builderImpl{
-		name: funcName,
-		main: fn,
-	}, nil
+	bld.main = fn
+	return bld, nil
 }
 
 // Client returns the PJRT client of the backend.

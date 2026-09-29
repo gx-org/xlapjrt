@@ -15,15 +15,15 @@
 package graph
 
 import (
+	"google3/third_party/golang/github_com/gomlx/compute/v/v0/compute"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/xlabuilder"
-	"github.com/gx-org/backend"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
 // RNGBitGenerator takes RNG state and generates the given shape filled with random values, and
 // returns the new state plus generated values.
-func (g *Graph) RNGBitGenerator(state backend.Value, shape shapes.Shape) (backend.Value, backend.Value, error) {
+func (g *Graph) RNGBitGenerator(state compute.Value, shape shapes.Shape) (compute.Value, compute.Value, error) {
 	newState, values, err := xlabuilder.RngBitGenerator(g.xlaHandle(state), pjrtgx.ToShape(shape))
 	if err != nil {
 		return nil, nil, err
