@@ -29,7 +29,6 @@ import (
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gomlx/gopjrt/xlabuilder"
 	"github.com/gx-org/backend"
-	dtype "github.com/gx-org/backend/dtypes"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	pjrtplatform "github.com/gx-org/xlapjrt/backend/platform"
 	pjrtgx "github.com/gx-org/xlapjrt"
@@ -246,71 +245,9 @@ func (n *Node) String() string {
 	return bld.String()
 }
 
-func newLiteral[T pjtypes.Supported](data []T, dims []int) (*xlabuilder.Literal, error) {
-	if len(dims) == 0 {
-		return xlabuilder.NewScalarLiteral(data[0]), nil
-	}
-	return xlabuilder.NewArrayLiteral(data, dims...)
-}
-
-// Constant returns a node representing a numerical constant value in the graph.
-func (g *Graph) Constant(data []byte, shap shapes.Shape) (compute.Value, error) {
-	var literal *xlabuilder.Literal
-	var err error
-	switch shap.DType {
-	case dtypes.Bool:
-		literal, err = newLiteral(dtype.ToSlice[bool](data), shap.Dimensions)
-	case dtypes.BFloat16:
-		literal, err = newLiteral(dtype.ToSlice[pjbfloat16.BFloat16](data), shap.Dimensions)
-	case dtypes.Float32:
-		literal, err = newLiteral(dtype.ToSlice[float32](data), shap.Dimensions)
-	case dtypes.Float64:
-		literal, err = newLiteral(dtype.ToSlice[float64](data), shap.Dimensions)
-	case dtypes.Int32:
-		literal, err = newLiteral(dtype.ToSlice[int32](data), shap.Dimensions)
-	case dtypes.Int64:
-		literal, err = newLiteral(dtype.ToSlice[int64](data), shap.Dimensions)
-	case dtypes.Uint32:
-		literal, err = newLiteral(dtype.ToSlice[uint32](data), shap.Dimensions)
-	case dtypes.Uint64:
-		literal, err = newLiteral(dtype.ToSlice[uint64](data), shap.Dimensions)
-	default:
-		err = errors.Errorf("cannot create a PJRT literal: data type %v not supported", shap.DType)
-	}
-	if err != nil {
-		return nil, err
-	}
-	op, err := xlabuilder.Constant(g.builder, literal)
-	if err != nil {
-		return nil, err
-	}
-	return g.newNode(op), nil
-}
-
-// NewAtomLiteral creates a node from a constant atom.
-func (g *Graph) NewAtomLiteral(v any) (compute.Value, error) {
-	var lit *xlabuilder.Literal
-	var err error
-	switch vT := v.(type) {
-	case int:
-		lit = xlabuilder.NewScalarLiteral(vT)
-	case bfloat16.BFloat16:
-		lit = xlabuilder.NewScalarLiteral(pjbfloat16.BFloat16(vT))
-	default:
-		lit, err = xlabuilder.NewScalarLiteralFromAny(vT)
-	}
-	if err != nil {
-		return nil, err
-	}
-	op, err := xlabuilder.Constant(g.builder, lit)
-	if err != nil {
-		return nil, err
-	}
-	return g.newNode(op), nil
-}
-
-// NewArrayLiteral creates a node from a constant array.
-func (g *Graph) NewArrayLiteral(flat any, axlengths ...int) (compute.Value, error) {
+// Constant creates a constant in the function with the given flat values
+// and the shape defined by the dimensions.
+func (g *Graph) Constant(flat any, dims ...int) (compute.Value, error) {
 	var lit *xlabuilder.Literal
 	var err error
 	switch flatT := flat.(type) {
@@ -319,9 +256,9 @@ func (g *Graph) NewArrayLiteral(flat any, axlengths ...int) (compute.Value, erro
 		for i, v := range flatT {
 			pjFlat[i] = pjbfloat16.BFloat16(v)
 		}
-		lit, err = xlabuilder.NewArrayLiteral(pjFlat, axlengths...)
+		lit, err = xlabuilder.NewArrayLiteral(pjFlat, dims...)
 	default:
-		lit, err = xlabuilder.NewArrayLiteralFromAny(flat, axlengths...)
+		lit, err = xlabuilder.NewArrayLiteralFromAny(flat, dims...)
 	}
 	if err != nil {
 		return nil, err
