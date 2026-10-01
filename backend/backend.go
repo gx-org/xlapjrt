@@ -46,6 +46,10 @@ func (b *builderImpl) Main() backend.Function {
 	return b.main
 }
 
+func (b *builderImpl) NewFunction(name string) (backend.Function, error) {
+	return b.main.NewFunction(name)
+}
+
 func (b *builderImpl) Compile(dev backend.DeviceNum, output, traced []*backend.OutputNode, params []shapes.Shape) (backend.Executable, error) {
 	return b.main.Compile(dev, output, traced, params)
 }

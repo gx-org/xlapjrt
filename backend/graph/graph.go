@@ -584,11 +584,10 @@ func (g *Graph) Call(sg *backend.Subgraph, args ...compute.Value) (compute.Value
 	return result, nil
 }
 
-// Subgraph returns a Graph instance that maps to a new subgraph.
-func (g *Graph) Subgraph(name string, inputs []shapes.Shape) (backend.Function, error) {
-	subName := g.builder.Name() + "." + name
-	builder := g.builder.CreateSubBuilder(subName)
-	return newGraph(g.plat, g.bld, g, inputs, builder)
+// NewFunction creates a new named function within the builder.
+func (g *Graph) NewFunction(name string) (backend.Function, error) {
+	builder := g.builder.CreateSubBuilder(name)
+	return newGraph(g.plat, g.bld, nil, nil, builder)
 }
 
 type subGraph struct {
