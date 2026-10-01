@@ -45,9 +45,11 @@ type (
 		builder    *xlabuilder.XlaBuilder
 		executable *pjrt.LoadedExecutable
 
-		in     []*Node
-		out    []shapes.Shape
-		traced []shapes.Shape
+		in       []*Node
+		out      []shapes.Shape
+		traced   []shapes.Shape
+		returned bool
+		outputs  []compute.Value
 	}
 
 	pjrtNode interface {
@@ -158,6 +160,9 @@ func (g *Graph) Platform() backend.Platform {
 
 // Name of the function.
 func (g *Graph) Name() string {
+	if g.parent != nil {
+		return ""
+	}
 	return g.builder.Name()
 }
 
@@ -169,6 +174,22 @@ func (g *Graph) Builder() backend.Builder {
 // Parent returns the parent function of the current function.
 func (g *Graph) Parent() backend.Function {
 	return g.parent
+}
+
+// Closure returns a new local function within this function.
+func (g *Graph) Closure() (backend.Function, error) {
+	builder := g.builder.CreateSubBuilder(g.builder.Name() + ".closure")
+	return newGraph(g.plat, g.bld, g, nil, builder)
+}
+
+// Return marks the outputs of this function.
+func (g *Graph) Return(outputs []compute.Value, shardings []*compute.ShardingSpec) error {
+	if g.returned {
+		return errors.Errorf("Return() already called for function %q", g.Name())
+	}
+	g.outputs = outputs
+	g.returned = true
+	return nil
 }
 
 // Shape returns the shape of the given Value.
