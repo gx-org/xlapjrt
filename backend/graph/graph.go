@@ -97,7 +97,7 @@ func (g *Graph) buildTupleArgument(shapes []shapes.Shape) (*tuple, error) {
 	return &tuple{Node: g.newNode(xlaOp).Info(argTuple)}, nil
 }
 
-func (g *Graph) tupleArgument(got shapes.Shape, name string, index int) (compute.Value, error) {
+func (g *Graph) tupleArgument(got shapes.Shape, name string, index int) (*Node, error) {
 	op, err := g.inputs.element(index)
 	if err != nil {
 		return nil, err
@@ -270,10 +270,16 @@ func (g *Graph) Constant(flat any, dims ...int) (compute.Value, error) {
 	return g.newNode(op), nil
 }
 
-// Argument returns a node set by a caller when calling the function.
-func (g *Graph) Argument(name string, shape shapes.Shape, index int) (node compute.Value, err error) {
+// Parameter creates an input parameter for this function.
+func (g *Graph) Parameter(name string, shape shapes.Shape, sharding *compute.ShardingSpec) (node compute.Value, err error) {
+	index := len(g.in)
 	if g.inputs != nil {
-		return g.tupleArgument(shape, name, index)
+		op, err := g.tupleArgument(shape, name, index)
+		if err != nil {
+			return nil, err
+		}
+		g.in = append(g.in, op)
+		return op, nil
 	}
 	xlaOp, err := xlabuilder.Parameter(g.builder, name, index, pjrtgx.ToShape(shape))
 	if err != nil {
