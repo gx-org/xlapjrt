@@ -28,6 +28,8 @@ type nodeRunner struct {
 	graph  *Graph
 }
 
+var _ backend.Executable = (*nodeRunner)(nil)
+
 func bufferShape(buffer *pjrt.Buffer) (shapes.Shape, error) {
 	dtype, err := buffer.DType()
 	if err != nil {
@@ -50,8 +52,8 @@ func checkShape(got, want shapes.Shape) error {
 	return nil
 }
 
-func toHandles(plat *pjrtplatform.Platform, dev backend.DeviceNum, buffers []*pjrt.Buffer, expectedShapes []shapes.Shape) ([]backend.DeviceHandle, error) {
-	handles := make([]backend.DeviceHandle, len(buffers))
+func toHandles(plat *pjrtplatform.Platform, dev backend.DeviceNum, buffers []*pjrt.Buffer, expectedShapes []shapes.Shape) ([]backend.Buffer, error) {
+	handles := make([]backend.Buffer, len(buffers))
 	for i, buffer := range buffers {
 		bShape, err := bufferShape(buffer)
 		if err != nil {
@@ -73,28 +75,39 @@ func toHandles(plat *pjrtplatform.Platform, dev backend.DeviceNum, buffers []*pj
 func (graph *Graph) newNodeRunner(dev backend.DeviceNum) backend.Executable {
 	return &nodeRunner{device: dev, graph: graph}
 }
-func (r *nodeRunner) Run(args []backend.Handle) (out, traced []backend.DeviceHandle, err error) {
-	deviceBuffers := make([]*pjrt.Buffer, len(args))
-	for i, arg := range args {
+
+func (r *nodeRunner) Finalize() {
+	if r.graph.executable != nil {
+		_ = r.graph.executable.Destroy()
+		r.graph.executable = nil
+	}
+}
+
+func (r *nodeRunner) Inputs() (names []string, inputShapes []shapes.Shape) {
+	names = append([]string(nil), r.graph.inNames...)
+	inputShapes = make([]shapes.Shape, len(r.graph.in))
+	for i, node := range r.graph.in {
+		inputShapes[i] = node.BackendShape()
+	}
+	return names, inputShapes
+}
+
+func (r *nodeRunner) Outputs() (outputShapes []shapes.Shape) {
+	return append([]shapes.Shape(nil), r.graph.out...)
+}
+
+func (r *nodeRunner) Execute(inputs []backend.Buffer, donate []bool, defaultDevice backend.DeviceNum) ([]backend.Buffer, error) {
+	deviceBuffers := make([]*pjrt.Buffer, len(inputs))
+	for i, arg := range inputs {
 		deviceBuffers[i] = arg.(*pjrtplatform.Handle).OnDeviceBuffer()
 		// Check that the buffer is valid...
 		if _, err := deviceBuffers[i].DType(); err != nil {
-			return nil, nil, errors.Errorf("argument %d:%T is an invalid pjrt buffer", i, arg)
+			return nil, errors.Errorf("argument %d:%T is an invalid pjrt buffer", i, arg)
 		}
 	}
 	results, err := r.graph.Executable().Execute(deviceBuffers...).Done()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	outShapes := r.graph.OutShapes()
-	numOut := len(outShapes)
-	out, err = toHandles(r.graph.plat, r.device, results[:numOut], outShapes)
-	if err != nil {
-		return nil, nil, err
-	}
-	traced, err = toHandles(r.graph.plat, r.device, results[numOut:], r.graph.TracedShapes())
-	if err != nil {
-		return nil, nil, err
-	}
-	return out, traced, nil
+	return toHandles(r.graph.plat, r.device, results, r.graph.OutShapes())
 }

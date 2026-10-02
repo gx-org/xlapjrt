@@ -16,6 +16,7 @@
 package backend
 
 import (
+	"google3/third_party/golang/github_com/gomlx/compute/v/v0/compute"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gx-org/backend"
@@ -31,8 +32,9 @@ type (
 	}
 
 	builderImpl struct {
-		name string
-		main *pjrtgraph.Graph
+		name    string
+		main    *pjrtgraph.Graph
+		devices []backend.DeviceNum
 	}
 )
 
@@ -50,8 +52,21 @@ func (b *builderImpl) NewFunction(name string) (backend.Function, error) {
 	return b.main.NewFunction(name)
 }
 
-func (b *builderImpl) Compile(dev backend.DeviceNum, output, traced []*backend.OutputNode, params []shapes.Shape) (backend.Executable, error) {
-	return b.main.Compile(dev, output, traced, params)
+func (b *builderImpl) OpShape(op compute.Value) (shapes.Shape, error) {
+	return b.main.Shape(op)
+}
+
+func (b *builderImpl) DeviceAssignment(devices ...backend.DeviceNum) error {
+	b.devices = devices
+	return nil
+}
+
+func (b *builderImpl) Compile() (backend.Executable, error) {
+	var dev backend.DeviceNum
+	if len(b.devices) > 0 {
+		dev = b.devices[0]
+	}
+	return b.main.Compile(dev)
 }
 
 // New returns a new PJRT backend.
@@ -76,7 +91,7 @@ func (b *pBackend) Builder(funcName string) (backend.Builder, error) {
 	bld := &builderImpl{
 		name: funcName,
 	}
-	fn, err := pjrtgraph.New(b.plat, bld, funcName, nil)
+	fn, err := pjrtgraph.New(b.plat, bld, funcName)
 	if err != nil {
 		return nil, err
 	}

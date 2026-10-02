@@ -37,8 +37,6 @@ import (
 type (
 	// Graph is the PJRT compute graph.
 	Graph struct {
-		inputs *tuple
-
 		plat       *pjrtplatform.Platform
 		bld        backend.Builder
 		parent     backend.Function
@@ -46,8 +44,8 @@ type (
 		executable *pjrt.LoadedExecutable
 
 		in       []*Node
+		inNames  []string
 		out      []shapes.Shape
-		traced   []shapes.Shape
 		returned bool
 		outputs  []compute.Value
 	}
@@ -64,81 +62,40 @@ var (
 )
 
 // New returns a new graph.
-func New(plat *pjrtplatform.Platform, bld backend.Builder, funcName string, shapes []shapes.Shape) (*Graph, error) {
-	return newGraph(plat, bld, nil, shapes, xlabuilder.New(funcName))
+func New(plat *pjrtplatform.Platform, bld backend.Builder, funcName string) (*Graph, error) {
+	return newGraph(plat, bld, nil, xlabuilder.New(funcName))
 }
 
-func newGraph(plat *pjrtplatform.Platform, bld backend.Builder, parent backend.Function, shapes []shapes.Shape, builder *xlabuilder.XlaBuilder) (*Graph, error) {
-	g := &Graph{
+func newGraph(plat *pjrtplatform.Platform, bld backend.Builder, parent backend.Function, builder *xlabuilder.XlaBuilder) (*Graph, error) {
+	return &Graph{
 		plat:    plat,
 		bld:     bld,
 		parent:  parent,
 		builder: builder,
-	}
-	var err error
-	g.inputs, err = g.buildTupleArgument(shapes)
-	if err != nil {
-		return nil, err
-	}
-	return g, nil
+	}, nil
 }
 
-func (g *Graph) buildTupleArgument(shapes []shapes.Shape) (*tuple, error) {
-	if len(shapes) == 0 {
-		return nil, nil
-	}
-	xlaShape := make([]xlabuilder.Shape, 0, len(shapes))
-	for _, shape := range shapes {
-		xlaShape = append(xlaShape, pjrtgx.ToShape(shape))
-	}
-	const argTuple = "argtuple"
-	xlaOp, err := xlabuilder.Parameter(g.builder, argTuple, 0, xlabuilder.Shape{TupleShapes: xlaShape})
-	if err != nil {
-		return nil, err
-	}
-	return &tuple{Node: g.newNode(xlaOp).Info(argTuple)}, nil
-}
-
-func (g *Graph) tupleArgument(got shapes.Shape, name string, index int) (*Node, error) {
-	op, err := g.inputs.element(index)
-	if err != nil {
-		return nil, err
-	}
-	want := op.BackendShape()
-	if !got.Equal(want) {
-		return nil, errors.Errorf("cannot create argument %d:%s: got shape %s but want %s", index, name, got, want)
-	}
-	return op.Info("[%s]", name), nil
-}
-
-func unpackOutput(outs []*backend.OutputNode) ([]compute.Value, []shapes.Shape) {
-	nodes := make([]compute.Value, len(outs))
-	shs := make([]shapes.Shape, len(outs))
-	for i, out := range outs {
-		nodes[i] = out.Node
-		shs[i] = out.Shape
-	}
-	return nodes, shs
-}
-
-// Compile a node given a set of parameters and using this node as an output.
+// Compile compiles the graph using the outputs recorded via Return().
 // Returns a function that will be run on a device given some inputs.
-func (g *Graph) Compile(dev backend.DeviceNum, out, traced []*backend.OutputNode, params []shapes.Shape) (backend.Executable, error) {
-	var outNodes, tracedNodes []compute.Value
-	outNodes, g.out = unpackOutput(out)
-	tracedNodes, g.traced = unpackOutput(traced)
-	all := append(append([]compute.Value{}, outNodes...), tracedNodes...)
-	allTuple, err := g.Tuple(all)
+func (g *Graph) Compile(dev backend.DeviceNum) (backend.Executable, error) {
+	if !g.returned {
+		return nil, errors.Errorf("Return() was not called for function %q before Compile()", g.Name())
+	}
+	g.out = make([]shapes.Shape, len(g.outputs))
+	for i, out := range g.outputs {
+		g.out[i] = out.(pjrtNode).BackendShape()
+	}
+	allTuple, err := g.Tuple(g.outputs)
 	if err != nil {
 		return nil, err
 	}
 	computation, err := g.builder.Build(g.xlaHandle(allTuple))
 	if err != nil {
-		return nil, errors.Errorf("cannot compile graph node %T for function %s: %v", all, g.builder.Name(), err)
+		return nil, errors.Errorf("cannot compile graph node %T for function %s: %v", g.outputs, g.builder.Name(), err)
 	}
 	g.executable, err = g.plat.Client().Compile().WithComputation(computation).Done()
 	if err != nil {
-		return nil, errors.Errorf("cannot compile graph node %T for function %s: %v", all, g.builder.Name(), err)
+		return nil, errors.Errorf("cannot compile graph node %T for function %s: %v", g.outputs, g.builder.Name(), err)
 	}
 	return g.newNodeRunner(dev), nil
 }
@@ -146,11 +103,6 @@ func (g *Graph) Compile(dev backend.DeviceNum, out, traced []*backend.OutputNode
 // OutShapes returns the expected shapes of the out nodes.
 func (g *Graph) OutShapes() []shapes.Shape {
 	return g.out
-}
-
-// TracedShapes returns the expected shapes of the out nodes.
-func (g *Graph) TracedShapes() []shapes.Shape {
-	return g.traced
 }
 
 // Platform owning the graph.
@@ -179,7 +131,7 @@ func (g *Graph) Parent() backend.Function {
 // Closure returns a new local function within this function.
 func (g *Graph) Closure() (backend.Function, error) {
 	builder := g.builder.CreateSubBuilder(g.builder.Name() + ".closure")
-	return newGraph(g.plat, g.bld, g, nil, builder)
+	return newGraph(g.plat, g.bld, g, builder)
 }
 
 // Return marks the outputs of this function.
@@ -294,20 +246,13 @@ func (g *Graph) Constant(flat any, dims ...int) (compute.Value, error) {
 // Parameter creates an input parameter for this function.
 func (g *Graph) Parameter(name string, shape shapes.Shape, sharding *compute.ShardingSpec) (node compute.Value, err error) {
 	index := len(g.in)
-	if g.inputs != nil {
-		op, err := g.tupleArgument(shape, name, index)
-		if err != nil {
-			return nil, err
-		}
-		g.in = append(g.in, op)
-		return op, nil
-	}
 	xlaOp, err := xlabuilder.Parameter(g.builder, name, index, pjrtgx.ToShape(shape))
 	if err != nil {
 		return nil, err
 	}
 	arg := g.newNode(xlaOp).Info("%s:%d", name, index)
 	g.in = append(g.in, arg)
+	g.inNames = append(g.inNames, name)
 	return arg, nil
 }
 
@@ -608,7 +553,7 @@ func (g *Graph) Call(sg *backend.Subgraph, args ...compute.Value) (compute.Value
 // NewFunction creates a new named function within the builder.
 func (g *Graph) NewFunction(name string) (backend.Function, error) {
 	builder := g.builder.CreateSubBuilder(name)
-	return newGraph(g.plat, g.bld, nil, nil, builder)
+	return newGraph(g.plat, g.bld, nil, builder)
 }
 
 type subGraph struct {
