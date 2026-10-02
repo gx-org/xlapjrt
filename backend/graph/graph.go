@@ -527,13 +527,14 @@ func (g *Graph) DotGeneral(lhs compute.Value, lhsContractingAxes, lhsBatchAxes [
 	return g.newNode(xlaOp), nil
 }
 
-// Call returns a node that invokes a subgraph with the given result node.
-func (g *Graph) Call(sg *backend.Subgraph, args ...compute.Value) (compute.Value, error) {
-	subcomp, err := g.xlaSubcomputation(sg)
+// Call invokes another function with the given inputs.
+func (g *Graph) Call(f backend.Function, inputs ...compute.Value) ([]compute.Value, error) {
+	pjrtsg := f.(*Graph)
+	subcomp, err := g.xlaSubcomputation(pjrtsg, len(pjrtsg.outputs) != 1)
 	if err != nil {
 		return nil, err
 	}
-	argOps, err := g.xlaHandles(args)
+	argOps, err := g.xlaHandles(inputs)
 	if err != nil {
 		return nil, err
 	}
@@ -543,11 +544,11 @@ func (g *Graph) Call(sg *backend.Subgraph, args ...compute.Value) (compute.Value
 		return nil, err
 	}
 	var result compute.Value = g.newNode(xlaOp, subcomp)
-	if _, ok := sg.Result.Node.(backend.Tuple); ok {
-		// If the result node was a tuple, the subgraph's return value will also be a tuple.
-		result = ToXLATuple(result)
+	if _, ok := subcomp.out.(backend.Tuple); ok {
+		// If the result node was a tuple, unpack the subgraph's return value.
+		return ToXLATuple(result).Unpack()
 	}
-	return result, nil
+	return []compute.Value{result}, nil
 }
 
 // NewFunction creates a new named function within the builder.
@@ -562,16 +563,47 @@ type subGraph struct {
 	graph *Graph
 }
 
-func (g *Graph) xlaSubcomputation(sg *backend.Subgraph) (*subGraph, error) {
-	pjrtsg := sg.Graph.(*Graph)
-	op := sg.Result.Node
-	sub := &subGraph{graph: pjrtsg, out: op}
+func (g *Graph) xlaSubcomputation(pjrtsg *Graph, tupleOut bool) (*subGraph, error) {
+	if !pjrtsg.returned {
+		return nil, errors.Errorf("cannot build a subgraph: Return() was not called on %q", pjrtsg.builder.Name())
+	}
+	var op compute.Value
 	var err error
+	if !tupleOut && len(pjrtsg.outputs) == 1 {
+		op = pjrtsg.outputs[0]
+	} else {
+		op, err = pjrtsg.Tuple(pjrtsg.outputs)
+		if err != nil {
+			return nil, err
+		}
+	}
+	sub := &subGraph{graph: pjrtsg, out: op}
 	sub.comp, err = pjrtsg.builder.Build(g.xlaHandle(op))
 	if err != nil {
 		return nil, errors.Errorf("cannot build a subgraph: %v\nSubgraph:\n%s", err, sub.String())
 	}
 	return sub, nil
+}
+
+func (g *Graph) wrapTupleArgs(sub *subGraph, tupleShape xlabuilder.Shape) error {
+	wrapper := g.builder.CreateSubBuilder(sub.graph.builder.Name() + ".tuple_args")
+	param, err := xlabuilder.Parameter(wrapper, "argtuple", 0, tupleShape)
+	if err != nil {
+		return err
+	}
+	elems := make([]*xlabuilder.Op, len(sub.graph.in))
+	for i := range sub.graph.in {
+		elems[i], err = xlabuilder.GetTupleElement(param, i)
+		if err != nil {
+			return err
+		}
+	}
+	callOp, err := xlabuilder.Call(wrapper, sub.comp, elems...)
+	if err != nil {
+		return err
+	}
+	sub.comp, err = wrapper.Build(callOp)
+	return err
 }
 
 func (sub *subGraph) String() string {
@@ -586,14 +618,32 @@ func (sub *subGraph) String() string {
 }
 
 // While returns a while loop node.
-func (g *Graph) While(cond, body *backend.Subgraph, state compute.Value) (compute.Value, error) {
-	condSG, err := g.xlaSubcomputation(cond)
+func (g *Graph) While(cond, body backend.Function, initialState ...compute.Value) ([]compute.Value, error) {
+	useTuple := len(initialState) != 1
+	condSG, err := g.xlaSubcomputation(cond.(*Graph), false)
 	if err != nil {
 		return nil, err
 	}
-	bodySG, err := g.xlaSubcomputation(body)
+	bodySG, err := g.xlaSubcomputation(body.(*Graph), useTuple)
 	if err != nil {
 		return nil, err
+	}
+
+	var state compute.Value
+	if useTuple {
+		state, err = g.Tuple(initialState)
+		if err != nil {
+			return nil, err
+		}
+		stateShape := g.xlaHandle(state).Shape
+		if err := g.wrapTupleArgs(condSG, stateShape); err != nil {
+			return nil, err
+		}
+		if err := g.wrapTupleArgs(bodySG, stateShape); err != nil {
+			return nil, err
+		}
+	} else {
+		state = initialState[0]
 	}
 
 	xlaOp, err := xlabuilder.While(g.xlaHandle(state), condSG.comp, bodySG.comp)
@@ -601,10 +651,10 @@ func (g *Graph) While(cond, body *backend.Subgraph, state compute.Value) (comput
 		return nil, err
 	}
 	var result compute.Value = g.newNode(xlaOp, condSG, bodySG)
-	if _, ok := state.(backend.Tuple); ok {
-		result = ToXLATuple(result)
+	if useTuple {
+		return ToXLATuple(result).Unpack()
 	}
-	return result, nil
+	return []compute.Value{result}, nil
 }
 
 // String representation of the graph.
