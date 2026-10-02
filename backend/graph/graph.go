@@ -85,7 +85,7 @@ func (g *Graph) Compile(dev backend.DeviceNum) (backend.Executable, error) {
 	for i, out := range g.outputs {
 		g.out[i] = out.(pjrtNode).BackendShape()
 	}
-	allTuple, err := g.Tuple(g.outputs)
+	allTuple, err := g.tuple(g.outputs)
 	if err != nil {
 		return nil, err
 	}
@@ -424,7 +424,7 @@ type tuple struct {
 	*Node
 }
 
-// Element returns a Node representing the ith element of the tuple.
+// element returns a Node representing the ith element of the tuple.
 func (n *tuple) element(i int) (*Node, error) {
 	xlaOp, err := xlabuilder.GetTupleElement(n.graph.xlaHandle(n.Node), i)
 	if err != nil {
@@ -433,20 +433,15 @@ func (n *tuple) element(i int) (*Node, error) {
 	return n.graph.newNode(xlaOp).Info("%s[%d]", n.info, i), nil
 }
 
-// Element returns a Node representing the ith element of the tuple.
-func (n *tuple) Element(i int) (compute.Value, error) {
-	return n.element(i)
-}
-
-func (n *tuple) Size() int {
+func (n *tuple) size() int {
 	// Note: this relies on gopjrt's shape tracking.
 	return n.Node.op.Shape.TupleSize()
 }
 
-func (n *tuple) Unpack() ([]compute.Value, error) {
-	nodes := make([]compute.Value, 0, n.Size())
-	for i := range n.Size() {
-		node, err := n.Element(i)
+func (n *tuple) unpack() ([]compute.Value, error) {
+	nodes := make([]compute.Value, 0, n.size())
+	for i := range n.size() {
+		node, err := n.element(i)
 		if err != nil {
 			return nil, err
 		}
@@ -455,8 +450,7 @@ func (n *tuple) Unpack() ([]compute.Value, error) {
 	return nodes, nil
 }
 
-// Tuple returns a node grouping multiple nodes together.
-func (g *Graph) Tuple(nodes []compute.Value) (backend.Tuple, error) {
+func (g *Graph) tuple(nodes []compute.Value) (*tuple, error) {
 	inputs, err := g.xlaHandles(nodes)
 	if err != nil {
 		return nil, err
@@ -468,8 +462,7 @@ func (g *Graph) Tuple(nodes []compute.Value) (backend.Tuple, error) {
 	return &tuple{g.newNode(xlaOp, nodes...)}, nil
 }
 
-// ToXLATuple casts a generic Node to a graph.Tuple node.
-func ToXLATuple(n compute.Value) backend.Tuple {
+func toXLATuple(n compute.Value) *tuple {
 	if tpl, ok := n.(*tuple); ok {
 		return tpl
 	}
@@ -544,9 +537,9 @@ func (g *Graph) Call(f backend.Function, inputs ...compute.Value) ([]compute.Val
 		return nil, err
 	}
 	var result compute.Value = g.newNode(xlaOp, subcomp)
-	if _, ok := subcomp.out.(backend.Tuple); ok {
+	if _, ok := subcomp.out.(*tuple); ok {
 		// If the result node was a tuple, unpack the subgraph's return value.
-		return ToXLATuple(result).Unpack()
+		return toXLATuple(result).unpack()
 	}
 	return []compute.Value{result}, nil
 }
@@ -572,7 +565,7 @@ func (g *Graph) xlaSubcomputation(pjrtsg *Graph, tupleOut bool) (*subGraph, erro
 	if !tupleOut && len(pjrtsg.outputs) == 1 {
 		op = pjrtsg.outputs[0]
 	} else {
-		op, err = pjrtsg.Tuple(pjrtsg.outputs)
+		op, err = pjrtsg.tuple(pjrtsg.outputs)
 		if err != nil {
 			return nil, err
 		}
@@ -631,7 +624,7 @@ func (g *Graph) While(cond, body backend.Function, initialState ...compute.Value
 
 	var state compute.Value
 	if useTuple {
-		state, err = g.Tuple(initialState)
+		state, err = g.tuple(initialState)
 		if err != nil {
 			return nil, err
 		}
@@ -652,7 +645,7 @@ func (g *Graph) While(cond, body backend.Function, initialState ...compute.Value
 	}
 	var result compute.Value = g.newNode(xlaOp, condSG, bodySG)
 	if useTuple {
-		return ToXLATuple(result).Unpack()
+		return toXLATuple(result).unpack()
 	}
 	return []compute.Value{result}, nil
 }
