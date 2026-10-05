@@ -71,7 +71,7 @@ func (plat *Platform) NumDevices() int {
 }
 
 // DeviceDescription returns a description of the device at the given deviceNum.
-func (plat *Platform) DeviceDescription(deviceNum backend.DeviceNum) string {
+func (plat *Platform) DeviceDescription(deviceNum compute.DeviceNum) string {
 	if !plat.clt.IsValid() {
 		return "invalid PJRT client"
 	}
@@ -92,7 +92,7 @@ func (plat *Platform) Capabilities() compute.Capabilities {
 }
 
 // BufferFromFlatData transfers data from Go given as a flat slice to the deviceNum, and returns the corresponding Buffer.
-func (plat *Platform) BufferFromFlatData(deviceNum backend.DeviceNum, flat any, shape shapes.Shape) (backend.Buffer, error) {
+func (plat *Platform) BufferFromFlatData(deviceNum compute.DeviceNum, flat any, shape shapes.Shape) (backend.Buffer, error) {
 	data := dtypes.UnsafeByteSliceFromAny(flat)
 	return plat.send(deviceNum, data, shape)
 }
@@ -103,7 +103,7 @@ func (plat *Platform) HasSharedBuffers() bool {
 }
 
 // NewSharedBuffer returns a shared buffer that can be both used as input for execution of computations and directly read or mutated by the clients.
-func (plat *Platform) NewSharedBuffer(deviceNum backend.DeviceNum, shape shapes.Shape) (buffer backend.Buffer, flat any, err error) {
+func (plat *Platform) NewSharedBuffer(deviceNum compute.DeviceNum, shape shapes.Shape) (buffer backend.Buffer, flat any, err error) {
 	devices := plat.clt.AddressableDevices()
 	if int(deviceNum) < 0 || int(deviceNum) >= len(devices) {
 		return nil, nil, errors.Errorf("deviceNum=%d not available for backend, only %d devices are available", deviceNum, len(devices))

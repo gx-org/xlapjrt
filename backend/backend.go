@@ -34,7 +34,7 @@ type (
 	builderImpl struct {
 		name    string
 		main    *pjrtgraph.Graph
-		devices []backend.DeviceNum
+		devices []compute.DeviceNum
 	}
 )
 
@@ -59,13 +59,13 @@ func (b *builderImpl) OpShape(op compute.Value) (shapes.Shape, error) {
 	return b.main.Shape(op)
 }
 
-func (b *builderImpl) DeviceAssignment(devices ...backend.DeviceNum) error {
+func (b *builderImpl) DeviceAssignment(devices ...compute.DeviceNum) error {
 	b.devices = devices
 	return nil
 }
 
 func (b *builderImpl) Compile() (backend.Executable, error) {
-	var dev backend.DeviceNum
+	var dev compute.DeviceNum
 	if len(b.devices) > 0 {
 		dev = b.devices[0]
 	}

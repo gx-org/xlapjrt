@@ -77,7 +77,7 @@ func newGraph(plat *pjrtplatform.Platform, bld backend.Builder, parent backend.F
 
 // Compile compiles the graph using the outputs recorded via Return().
 // Returns a function that will be run on a device given some inputs.
-func (g *Graph) Compile(dev backend.DeviceNum) (backend.Executable, error) {
+func (g *Graph) Compile(dev compute.DeviceNum) (backend.Executable, error) {
 	if !g.returned {
 		return nil, errors.Errorf("Return() was not called for function %q before Compile()", g.Name())
 	}

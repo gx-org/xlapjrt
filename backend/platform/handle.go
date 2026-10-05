@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"unsafe"
 
+	"google3/third_party/golang/github_com/gomlx/compute/v/v0/compute"
 	"github.com/gomlx/compute/dtypes"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/pjrt"
@@ -29,7 +30,7 @@ type (
 	// Handle of a PJRT buffer.
 	Handle struct {
 		plat   *Platform
-		device backend.DeviceNum
+		device compute.DeviceNum
 		buffer *pjrt.Buffer
 		shape  shapes.Shape
 	}
@@ -43,7 +44,7 @@ type (
 var _ backend.Buffer = (*Handle)(nil)
 
 // NewHandle returns a new platform handle given a PJRT buffer.
-func NewHandle(plat *Platform, dev backend.DeviceNum, buffer *pjrt.Buffer, sh shapes.Shape) (*Handle, error) {
+func NewHandle(plat *Platform, dev compute.DeviceNum, buffer *pjrt.Buffer, sh shapes.Shape) (*Handle, error) {
 	return &Handle{
 		plat:   plat,
 		device: dev,
@@ -73,11 +74,11 @@ func (h *Handle) OnDeviceBuffer() *pjrt.Buffer {
 }
 
 // CopyToDevice copies the buffer to another device on the same backend.
-func (h *Handle) CopyToDevice(dev backend.DeviceNum) (backend.Buffer, error) {
+func (h *Handle) CopyToDevice(dev compute.DeviceNum) (backend.Buffer, error) {
 	return h.toDevice(dev)
 }
 
-func (h *Handle) toDevice(dev backend.DeviceNum) (*Handle, error) {
+func (h *Handle) toDevice(dev compute.DeviceNum) (*Handle, error) {
 	if h.device == dev {
 		return h, nil
 	}
@@ -107,7 +108,7 @@ func (h *Handle) Data() (flat any, err error) {
 }
 
 // DeviceNum returns the deviceNum for the buffer.
-func (h *Handle) DeviceNum() (backend.DeviceNum, error) {
+func (h *Handle) DeviceNum() (compute.DeviceNum, error) {
 	return h.device, nil
 }
 
@@ -117,7 +118,7 @@ func (h *Handle) String() string {
 }
 
 // ToDevice sends a generic buffer to a device.
-func ToDevice(plat *Platform, dev backend.DeviceNum, handle backend.Buffer) (*Handle, error) {
+func ToDevice(plat *Platform, dev compute.DeviceNum, handle backend.Buffer) (*Handle, error) {
 	if handleT, ok := handle.(*Handle); ok && handleT.plat == plat {
 		return handleT.toDevice(dev)
 	}

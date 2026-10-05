@@ -16,6 +16,7 @@ package graph
 
 import (
 	"github.com/pkg/errors"
+	"google3/third_party/golang/github_com/gomlx/compute/v/v0/compute"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gx-org/backend"
@@ -24,7 +25,7 @@ import (
 )
 
 type nodeRunner struct {
-	device backend.DeviceNum
+	device compute.DeviceNum
 	graph  *Graph
 }
 
@@ -52,7 +53,7 @@ func checkShape(got, want shapes.Shape) error {
 	return nil
 }
 
-func toHandles(plat *pjrtplatform.Platform, dev backend.DeviceNum, buffers []*pjrt.Buffer, expectedShapes []shapes.Shape) ([]backend.Buffer, error) {
+func toHandles(plat *pjrtplatform.Platform, dev compute.DeviceNum, buffers []*pjrt.Buffer, expectedShapes []shapes.Shape) ([]backend.Buffer, error) {
 	handles := make([]backend.Buffer, len(buffers))
 	for i, buffer := range buffers {
 		bShape, err := bufferShape(buffer)
@@ -72,7 +73,7 @@ func toHandles(plat *pjrtplatform.Platform, dev backend.DeviceNum, buffers []*pj
 }
 
 // newNodeRunner returns a new node runner given a function and a graph.
-func (graph *Graph) newNodeRunner(dev backend.DeviceNum) backend.Executable {
+func (graph *Graph) newNodeRunner(dev compute.DeviceNum) backend.Executable {
 	return &nodeRunner{device: dev, graph: graph}
 }
 
@@ -96,7 +97,7 @@ func (r *nodeRunner) Outputs() (outputShapes []shapes.Shape) {
 	return append([]shapes.Shape(nil), r.graph.out...)
 }
 
-func (r *nodeRunner) Execute(inputs []backend.Buffer, donate []bool, defaultDevice backend.DeviceNum) ([]backend.Buffer, error) {
+func (r *nodeRunner) Execute(inputs []backend.Buffer, donate []bool, defaultDevice compute.DeviceNum) ([]backend.Buffer, error) {
 	deviceBuffers := make([]*pjrt.Buffer, len(inputs))
 	for i, arg := range inputs {
 		deviceBuffers[i] = arg.(*pjrtplatform.Handle).OnDeviceBuffer()
