@@ -505,7 +505,7 @@ func (g *Graph) DynamicUpdateSlice(operand, update compute.Value, startIndices [
 }
 
 // DotGeneral returns a generic dot product node.
-func (g *Graph) DotGeneral(lhs compute.Value, lhsContractingAxes, lhsBatchAxes []int, rhs compute.Value, rhsContractingAxes, rhsBatchAxes []int, config backend.DotGeneralConfig) (compute.Value, error) {
+func (g *Graph) DotGeneral(lhs compute.Value, lhsContractingAxes, lhsBatchAxes []int, rhs compute.Value, rhsContractingAxes, rhsBatchAxes []int, config compute.DotGeneralConfig) (compute.Value, error) {
 	xlaOp, err := xlabuilder.DotGeneral(
 		g.xlaHandle(lhs), lhsContractingAxes, lhsBatchAxes,
 		g.xlaHandle(rhs), rhsContractingAxes, rhsBatchAxes)
