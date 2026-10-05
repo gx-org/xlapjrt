@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"google3/third_party/golang/github_com/gomlx/compute/v/v0/compute"
 	"github.com/gomlx/compute/dtypes"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/pjrt"
@@ -86,8 +87,8 @@ func (plat *Platform) DeviceDescription(deviceNum backend.DeviceNum) string {
 }
 
 // Capabilities returns information about what is supported by this backend.
-func (plat *Platform) Capabilities() backend.Capabilities {
-	return backend.Capabilities{}
+func (plat *Platform) Capabilities() compute.Capabilities {
+	return compute.Capabilities{}
 }
 
 // BufferFromFlatData transfers data from Go given as a flat slice to the deviceNum, and returns the corresponding Buffer.
