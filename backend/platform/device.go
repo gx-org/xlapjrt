@@ -19,7 +19,6 @@ import (
 	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/dtypes"
 	"github.com/gx-org/backend"
-	"github.com/gx-org/gx/golang/backend/kernels"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
@@ -29,15 +28,9 @@ func (plat *Platform) send(dev backend.DeviceNum, data []byte, sh shapes.Shape) 
 	if dt == dtypes.InvalidDType {
 		return nil, errors.Errorf("GX %s data type not supported by pjrt", sh.DType.String())
 	}
-	buffer, err := plat.clt.BufferFromHost().FromRawData(data, dt, sh.Dimensions).Done()
+	buffer, err := plat.clt.BufferFromHost().FromRawData(data, dt, sh.Dimensions).ToDeviceNum(int(dev)).Done()
 	if err != nil {
 		return nil, err
 	}
 	return NewHandle(plat, dev, buffer, sh)
-}
-
-func (plat *Platform) sendFromHost(dev backend.DeviceNum, handle kernels.HostBuffer) (*Handle, error) {
-	data := handle.Acquire()
-	defer handle.Release()
-	return plat.send(dev, data, handle.Shape())
 }

@@ -27,8 +27,8 @@ import (
 
 type (
 	pBackend struct {
-		plat *pjrtplatform.Platform
-		bld  *builder.Builder
+		*pjrtplatform.Platform
+		bld *builder.Builder
 	}
 
 	builderImpl struct {
@@ -38,7 +38,10 @@ type (
 	}
 )
 
-var _ backend.Builder = (*builderImpl)(nil)
+var (
+	_ backend.Backend = (*pBackend)(nil)
+	_ backend.Builder = (*builderImpl)(nil)
+)
 
 func (b *builderImpl) Name() string {
 	return b.name
@@ -75,38 +78,18 @@ func New(builder *builder.Builder, plugin *pjrt.Plugin) (backend.Backend, error)
 	if err != nil {
 		return nil, err
 	}
-	return &pBackend{
-		bld:  builder,
-		plat: pjrtplatform.New(client),
-	}, nil
-}
-
-// Platform used by the backend.
-func (b *pBackend) Platform() backend.Platform {
-	return b.plat
+	bck := &pBackend{
+		bld: builder,
+	}
+	bck.Platform = pjrtplatform.New(client, bck)
+	return bck, nil
 }
 
 // Builder returns a new XLA computation builder.
-func (b *pBackend) Builder(funcName string) (backend.Builder, error) {
+func (b *pBackend) Builder(funcName string) backend.Builder {
 	bld := &builderImpl{
 		name: funcName,
 	}
-	fn, err := pjrtgraph.New(b.plat, bld, funcName)
-	if err != nil {
-		return nil, err
-	}
-	bld.main = fn
-	return bld, nil
-}
-
-// Client returns the PJRT client of the backend.
-func (b *pBackend) Client() *pjrt.Client {
-	return b.plat.Client()
-}
-
-// Release the backend.
-func (b *pBackend) Finalize() error {
-	err := b.plat.Finalize()
-	b.plat = nil
-	return err
+	bld.main = pjrtgraph.New(b.Platform, bld, funcName)
+	return bld
 }

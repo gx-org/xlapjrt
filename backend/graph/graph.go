@@ -62,17 +62,17 @@ var (
 )
 
 // New returns a new graph.
-func New(plat *pjrtplatform.Platform, bld backend.Builder, funcName string) (*Graph, error) {
+func New(plat *pjrtplatform.Platform, bld backend.Builder, funcName string) *Graph {
 	return newGraph(plat, bld, nil, xlabuilder.New(funcName))
 }
 
-func newGraph(plat *pjrtplatform.Platform, bld backend.Builder, parent backend.Function, builder *xlabuilder.XlaBuilder) (*Graph, error) {
+func newGraph(plat *pjrtplatform.Platform, bld backend.Builder, parent backend.Function, builder *xlabuilder.XlaBuilder) *Graph {
 	return &Graph{
 		plat:    plat,
 		bld:     bld,
 		parent:  parent,
 		builder: builder,
-	}, nil
+	}
 }
 
 // Compile compiles the graph using the outputs recorded via Return().
@@ -105,11 +105,6 @@ func (g *Graph) OutShapes() []shapes.Shape {
 	return g.out
 }
 
-// Platform owning the graph.
-func (g *Graph) Platform() backend.Platform {
-	return g.plat
-}
-
 // Name of the function.
 func (g *Graph) Name() string {
 	if g.parent != nil {
@@ -131,7 +126,7 @@ func (g *Graph) Parent() backend.Function {
 // Closure returns a new local function within this function.
 func (g *Graph) Closure() (backend.Function, error) {
 	builder := g.builder.CreateSubBuilder(g.builder.Name() + ".closure")
-	return newGraph(g.plat, g.bld, g, builder)
+	return newGraph(g.plat, g.bld, g, builder), nil
 }
 
 // Return marks the outputs of this function.
@@ -547,7 +542,7 @@ func (g *Graph) Call(f backend.Function, inputs ...compute.Value) ([]compute.Val
 // NewFunction creates a new named function within the builder.
 func (g *Graph) NewFunction(name string) (backend.Function, error) {
 	builder := g.builder.CreateSubBuilder(name)
-	return newGraph(g.plat, g.bld, nil, builder)
+	return newGraph(g.plat, g.bld, nil, builder), nil
 }
 
 type subGraph struct {

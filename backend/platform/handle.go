@@ -16,13 +16,13 @@ package platform
 
 import (
 	"fmt"
+	"unsafe"
 
-	"github.com/pkg/errors"
+	"github.com/gomlx/compute/dtypes"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gomlx/gopjrt/xlabuilder"
 	"github.com/gx-org/backend"
-	"github.com/gx-org/gx/golang/backend/kernels"
 )
 
 type (
@@ -40,7 +40,7 @@ type (
 	}
 )
 
-var _ backend.DeviceHandle = (*Handle)(nil)
+var _ backend.Buffer = (*Handle)(nil)
 
 // NewHandle returns a new platform handle given a PJRT buffer.
 func NewHandle(plat *Platform, dev backend.DeviceNum, buffer *pjrt.Buffer, sh shapes.Shape) (*Handle, error) {
@@ -52,9 +52,19 @@ func NewHandle(plat *Platform, dev backend.DeviceNum, buffer *pjrt.Buffer, sh sh
 	}, nil
 }
 
-// Shape of the underlying array.
-func (h *Handle) Shape() shapes.Shape {
-	return h.shape
+// Backend returns the backend that owns this buffer.
+func (h *Handle) Backend() backend.Backend {
+	return h.plat.Backend()
+}
+
+// Finalize allows the client to inform the backend that the buffer is no longer needed.
+func (h *Handle) Finalize() error {
+	return h.buffer.Destroy()
+}
+
+// Shape returns the shape for the buffer.
+func (h *Handle) Shape() (shapes.Shape, error) {
+	return h.shape, nil
 }
 
 // OnDeviceBuffer returns the PJRT buffer.
@@ -62,8 +72,8 @@ func (h *Handle) OnDeviceBuffer() *pjrt.Buffer {
 	return h.buffer
 }
 
-// ToDevice transfers the handle to a device.
-func (h *Handle) ToDevice(dev backend.DeviceNum) (backend.DeviceHandle, error) {
+// CopyToDevice copies the buffer to another device on the same backend.
+func (h *Handle) CopyToDevice(dev backend.DeviceNum) (backend.Buffer, error) {
 	return h.toDevice(dev)
 }
 
@@ -75,17 +85,30 @@ func (h *Handle) toDevice(dev backend.DeviceNum) (*Handle, error) {
 	if err := h.buffer.ToHost(data); err != nil {
 		return nil, err
 	}
-	return h.plat.send(dev, data, h.Shape())
+	return h.plat.send(dev, data, h.shape)
 }
 
-// ToHost fetches the data from the handle and write it to buffer.
-func (h *Handle) ToHost(buf []byte) error {
+// ToFlatData transfers the flat values of the buffer to the Go flat array.
+func (h *Handle) ToFlatData(flat any) error {
+	if h.shape.IsZeroSize() {
+		return nil
+	}
+	buf := dtypes.UnsafeByteSliceFromAny(flat)
 	return h.buffer.ToHost(buf)
 }
 
-// Device on which the array is located.
-func (h *Handle) Device() backend.DeviceNum {
-	return h.device
+// Data returns a slice pointing to the buffer storage memory directly.
+func (h *Handle) Data() (flat any, err error) {
+	rawStorage, err := h.buffer.UnsafePointer()
+	if err != nil {
+		return nil, err
+	}
+	return dtypes.UnsafeAnySliceFromBytes(rawStorage, h.shape.DType, h.shape.Size()), nil
+}
+
+// DeviceNum returns the deviceNum for the buffer.
+func (h *Handle) DeviceNum() (backend.DeviceNum, error) {
+	return h.device, nil
 }
 
 // String representation of the handle.
@@ -93,13 +116,19 @@ func (h *Handle) String() string {
 	return fmt.Sprintf("PJRT %T: %s", h, h.shape.String())
 }
 
-// ToDevice sends a generic handle to a device.
-func ToDevice(plat *Platform, dev backend.DeviceNum, handle backend.Handle) (*Handle, error) {
-	switch handleT := handle.(type) {
-	case *Handle:
+// ToDevice sends a generic buffer to a device.
+func ToDevice(plat *Platform, dev backend.DeviceNum, handle backend.Buffer) (*Handle, error) {
+	if handleT, ok := handle.(*Handle); ok && handleT.plat == plat {
 		return handleT.toDevice(dev)
-	case kernels.HostBuffer:
-		return plat.sendFromHost(dev, handleT)
 	}
-	return nil, errors.Errorf("not implemented")
+	sh, err := handle.Shape()
+	if err != nil {
+		return nil, err
+	}
+	raw := make([]byte, sh.ByteSize())
+	flat := dtypes.UnsafeAnySliceFromBytes(unsafe.Pointer(unsafe.SliceData(raw)), sh.DType, sh.Size())
+	if err := handle.ToFlatData(flat); err != nil {
+		return nil, err
+	}
+	return plat.send(dev, raw, sh)
 }

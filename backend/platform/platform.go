@@ -16,19 +16,31 @@
 package platform
 
 import (
+	"fmt"
+
+	"github.com/pkg/errors"
+	"github.com/gomlx/compute/dtypes"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gx-org/backend"
+	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
 // Platform is the PJRT backend.
 type Platform struct {
-	clt *pjrt.Client
+	bck       backend.Backend
+	clt       *pjrt.Client
+	finalized bool
 }
 
 // New PJRT backend.
-func New(clt *pjrt.Client) *Platform {
-	return &Platform{clt: clt}
+func New(clt *pjrt.Client, bck backend.Backend) *Platform {
+	return &Platform{clt: clt, bck: bck}
+}
+
+// Backend returns the backend owning the platform.
+func (plat *Platform) Backend() backend.Backend {
+	return plat.bck
 }
 
 // Name of the backend.
@@ -36,9 +48,79 @@ func (plat *Platform) Name() string {
 	return "pjrt"
 }
 
-// Send raw data to the device.
-func (plat *Platform) Send(dev backend.DeviceNum, data []byte, sh shapes.Shape) (backend.DeviceHandle, error) {
-	return plat.send(dev, data, sh)
+// String returns the same as Name.
+func (plat *Platform) String() string {
+	return plat.Name()
+}
+
+// Description is a longer description of the Backend that can be used to pretty-print.
+func (plat *Platform) Description() string {
+	if !plat.clt.IsValid() {
+		return "invalid PJRT client"
+	}
+	return plat.clt.String()
+}
+
+// NumDevices returns the number of devices available for this Backend.
+func (plat *Platform) NumDevices() int {
+	if !plat.clt.IsValid() {
+		return 0
+	}
+	return len(plat.clt.AddressableDevices())
+}
+
+// DeviceDescription returns a description of the device at the given deviceNum.
+func (plat *Platform) DeviceDescription(deviceNum backend.DeviceNum) string {
+	if !plat.clt.IsValid() {
+		return "invalid PJRT client"
+	}
+	devices := plat.clt.AddressableDevices()
+	if int(deviceNum) < 0 || int(deviceNum) >= len(devices) {
+		return fmt.Sprintf("invalid deviceNum %d", deviceNum)
+	}
+	desc, err := devices[deviceNum].GetDescription()
+	if err != nil {
+		return fmt.Sprintf("failed to get description for device %d: %v", deviceNum, err)
+	}
+	return fmt.Sprintf("%s [processId=%d]", desc.DebugString(), desc.ProcessIndex())
+}
+
+// Capabilities returns information about what is supported by this backend.
+func (plat *Platform) Capabilities() backend.Capabilities {
+	return backend.Capabilities{}
+}
+
+// BufferFromFlatData transfers data from Go given as a flat slice to the deviceNum, and returns the corresponding Buffer.
+func (plat *Platform) BufferFromFlatData(deviceNum backend.DeviceNum, flat any, shape shapes.Shape) (backend.Buffer, error) {
+	data := dtypes.UnsafeByteSliceFromAny(flat)
+	return plat.send(deviceNum, data, shape)
+}
+
+// HasSharedBuffers returns whether this PJRT plugin supports shared buffers.
+func (plat *Platform) HasSharedBuffers() bool {
+	return false
+}
+
+// NewSharedBuffer returns a shared buffer that can be both used as input for execution of computations and directly read or mutated by the clients.
+func (plat *Platform) NewSharedBuffer(deviceNum backend.DeviceNum, shape shapes.Shape) (buffer backend.Buffer, flat any, err error) {
+	devices := plat.clt.AddressableDevices()
+	if int(deviceNum) < 0 || int(deviceNum) >= len(devices) {
+		return nil, nil, errors.Errorf("deviceNum=%d not available for backend, only %d devices are available", deviceNum, len(devices))
+	}
+	dt := pjrtgx.ToPJDType(shape.DType)
+	pjrtBuffer, _, err := plat.clt.NewSharedBuffer(dt, shape.Dimensions, devices[deviceNum])
+	if err != nil {
+		return nil, nil, err
+	}
+	h, err := NewHandle(plat, deviceNum, pjrtBuffer, shape)
+	if err != nil {
+		return nil, nil, err
+	}
+	flat, err = h.Data()
+	if err != nil {
+		return nil, nil, err
+	}
+	return h, flat, nil
 }
 
 // Client returns the PJRT client.
@@ -46,10 +128,20 @@ func (plat *Platform) Client() *pjrt.Client {
 	return plat.clt
 }
 
-// Finalize everything linked to the backend.
-// It is invalid to use any device from the platform after this call.
-func (plat *Platform) Finalize() error {
-	return plat.clt.Destroy()
+// Finalize releases all the associated resources immediately, and makes the backend invalid.
+func (plat *Platform) Finalize() {
+	if plat.finalized {
+		return
+	}
+	plat.finalized = true
+	if plat.clt != nil {
+		_ = plat.clt.Destroy()
+	}
+}
+
+// IsFinalized returns true if the backend is in an invalid state.
+func (plat *Platform) IsFinalized() bool {
+	return plat == nil || plat.finalized || !plat.clt.IsValid()
 }
 
 func toInt32(input []int) []int32 {
