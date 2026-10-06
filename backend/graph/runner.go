@@ -16,10 +16,9 @@ package graph
 
 import (
 	"github.com/pkg/errors"
-	"google3/third_party/golang/github_com/gomlx/compute/v/v0/compute"
+	"github.com/gomlx/compute"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/pjrt"
-	"github.com/gx-org/backend"
 	pjrtplatform "github.com/gx-org/xlapjrt/backend/platform"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
@@ -29,7 +28,7 @@ type nodeRunner struct {
 	graph  *Graph
 }
 
-var _ backend.Executable = (*nodeRunner)(nil)
+var _ compute.Executable = (*nodeRunner)(nil)
 
 func bufferShape(buffer *pjrt.Buffer) (shapes.Shape, error) {
 	dtype, err := buffer.DType()
@@ -53,8 +52,8 @@ func checkShape(got, want shapes.Shape) error {
 	return nil
 }
 
-func toHandles(plat *pjrtplatform.Platform, dev compute.DeviceNum, buffers []*pjrt.Buffer, expectedShapes []shapes.Shape) ([]backend.Buffer, error) {
-	handles := make([]backend.Buffer, len(buffers))
+func toHandles(plat *pjrtplatform.Platform, dev compute.DeviceNum, buffers []*pjrt.Buffer, expectedShapes []shapes.Shape) ([]compute.Buffer, error) {
+	handles := make([]compute.Buffer, len(buffers))
 	for i, buffer := range buffers {
 		bShape, err := bufferShape(buffer)
 		if err != nil {
@@ -73,7 +72,7 @@ func toHandles(plat *pjrtplatform.Platform, dev compute.DeviceNum, buffers []*pj
 }
 
 // newNodeRunner returns a new node runner given a function and a graph.
-func (graph *Graph) newNodeRunner(dev compute.DeviceNum) backend.Executable {
+func (graph *Graph) newNodeRunner(dev compute.DeviceNum) compute.Executable {
 	return &nodeRunner{device: dev, graph: graph}
 }
 
@@ -97,7 +96,7 @@ func (r *nodeRunner) Outputs() (outputShapes []shapes.Shape) {
 	return append([]shapes.Shape(nil), r.graph.out...)
 }
 
-func (r *nodeRunner) Execute(inputs []backend.Buffer, donate []bool, defaultDevice compute.DeviceNum) ([]backend.Buffer, error) {
+func (r *nodeRunner) Execute(inputs []compute.Buffer, donate []bool, defaultDevice compute.DeviceNum) ([]compute.Buffer, error) {
 	deviceBuffers := make([]*pjrt.Buffer, len(inputs))
 	for i, arg := range inputs {
 		deviceBuffers[i] = arg.(*pjrtplatform.Handle).OnDeviceBuffer()

@@ -16,7 +16,7 @@ package platform
 
 import (
 	"github.com/pkg/errors"
-	"google3/third_party/golang/github_com/gomlx/compute/v/v0/compute"
+	"github.com/gomlx/compute"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/dtypes"
 	pjrtgx "github.com/gx-org/xlapjrt"

@@ -16,10 +16,10 @@
 package backend
 
 import (
-	"google3/third_party/golang/github_com/gomlx/compute/v/v0/compute"
+	"github.com/pkg/errors"
+	"github.com/gomlx/compute"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/pjrt"
-	"github.com/gx-org/backend"
 	"github.com/gx-org/gx/build/builder"
 	pjrtgraph "github.com/gx-org/xlapjrt/backend/graph"
 	pjrtplatform "github.com/gx-org/xlapjrt/backend/platform"
@@ -39,19 +39,19 @@ type (
 )
 
 var (
-	_ backend.Backend = (*pBackend)(nil)
-	_ backend.Builder = (*builderImpl)(nil)
+	_ compute.Backend = (*pBackend)(nil)
+	_ compute.Builder = (*builderImpl)(nil)
 )
 
 func (b *builderImpl) Name() string {
 	return b.name
 }
 
-func (b *builderImpl) Main() backend.Function {
+func (b *builderImpl) Main() compute.Function {
 	return b.main
 }
 
-func (b *builderImpl) NewFunction(name string) (backend.Function, error) {
+func (b *builderImpl) NewFunction(name string) (compute.Function, error) {
 	return b.main.NewFunction(name)
 }
 
@@ -59,12 +59,20 @@ func (b *builderImpl) OpShape(op compute.Value) (shapes.Shape, error) {
 	return b.main.Shape(op)
 }
 
+func (b *builderImpl) DistributedSPMD(numDevices int) error {
+	return errors.Errorf("not implemented")
+}
+
+func (b *builderImpl) DistributedAutoSharding(meshes ...compute.Mesh) error {
+	return errors.Errorf("not implemented")
+}
+
 func (b *builderImpl) DeviceAssignment(devices ...compute.DeviceNum) error {
 	b.devices = devices
 	return nil
 }
 
-func (b *builderImpl) Compile() (backend.Executable, error) {
+func (b *builderImpl) Compile() (compute.Executable, error) {
 	var dev compute.DeviceNum
 	if len(b.devices) > 0 {
 		dev = b.devices[0]
@@ -73,7 +81,7 @@ func (b *builderImpl) Compile() (backend.Executable, error) {
 }
 
 // New returns a new PJRT backend.
-func New(builder *builder.Builder, plugin *pjrt.Plugin) (backend.Backend, error) {
+func New(builder *builder.Builder, plugin *pjrt.Plugin) (compute.Backend, error) {
 	client, err := plugin.NewClient(nil)
 	if err != nil {
 		return nil, err
@@ -86,7 +94,7 @@ func New(builder *builder.Builder, plugin *pjrt.Plugin) (backend.Backend, error)
 }
 
 // Builder returns a new XLA computation builder.
-func (b *pBackend) Builder(funcName string) backend.Builder {
+func (b *pBackend) Builder(funcName string) compute.Builder {
 	bld := &builderImpl{
 		name: funcName,
 	}

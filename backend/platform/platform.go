@@ -19,28 +19,27 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"google3/third_party/golang/github_com/gomlx/compute/v/v0/compute"
+	"github.com/gomlx/compute"
 	"github.com/gomlx/compute/dtypes"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/pjrt"
-	"github.com/gx-org/backend"
 	pjrtgx "github.com/gx-org/xlapjrt"
 )
 
 // Platform is the PJRT backend.
 type Platform struct {
-	bck       backend.Backend
+	bck       compute.Backend
 	clt       *pjrt.Client
 	finalized bool
 }
 
 // New PJRT backend.
-func New(clt *pjrt.Client, bck backend.Backend) *Platform {
+func New(clt *pjrt.Client, bck compute.Backend) *Platform {
 	return &Platform{clt: clt, bck: bck}
 }
 
 // Backend returns the backend owning the platform.
-func (plat *Platform) Backend() backend.Backend {
+func (plat *Platform) Backend() compute.Backend {
 	return plat.bck
 }
 
@@ -92,7 +91,7 @@ func (plat *Platform) Capabilities() compute.Capabilities {
 }
 
 // BufferFromFlatData transfers data from Go given as a flat slice to the deviceNum, and returns the corresponding Buffer.
-func (plat *Platform) BufferFromFlatData(deviceNum compute.DeviceNum, flat any, shape shapes.Shape) (backend.Buffer, error) {
+func (plat *Platform) BufferFromFlatData(deviceNum compute.DeviceNum, flat any, shape shapes.Shape) (compute.Buffer, error) {
 	data := dtypes.UnsafeByteSliceFromAny(flat)
 	return plat.send(deviceNum, data, shape)
 }
@@ -103,7 +102,7 @@ func (plat *Platform) HasSharedBuffers() bool {
 }
 
 // NewSharedBuffer returns a shared buffer that can be both used as input for execution of computations and directly read or mutated by the clients.
-func (plat *Platform) NewSharedBuffer(deviceNum compute.DeviceNum, shape shapes.Shape) (buffer backend.Buffer, flat any, err error) {
+func (plat *Platform) NewSharedBuffer(deviceNum compute.DeviceNum, shape shapes.Shape) (buffer compute.Buffer, flat any, err error) {
 	devices := plat.clt.AddressableDevices()
 	if int(deviceNum) < 0 || int(deviceNum) >= len(devices) {
 		return nil, nil, errors.Errorf("deviceNum=%d not available for backend, only %d devices are available", deviceNum, len(devices))

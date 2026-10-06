@@ -20,15 +20,15 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"google3/third_party/golang/github_com/gomlx/compute/v/v0/compute"
+	"github.com/gomlx/compute"
 	"github.com/gomlx/compute/dtypes/bfloat16"
 	"github.com/gomlx/compute/dtypes"
+	"github.com/gomlx/compute/notimplemented"
 	"github.com/gomlx/compute/shapes"
 	pjbfloat16 "github.com/gomlx/gopjrt/dtypes/bfloat16"
 	pjtypes "github.com/gomlx/gopjrt/dtypes"
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gomlx/gopjrt/xlabuilder"
-	"github.com/gx-org/backend"
 	gxfmt "github.com/gx-org/gx/base/fmt"
 	pjrtplatform "github.com/gx-org/xlapjrt/backend/platform"
 	pjrtgx "github.com/gx-org/xlapjrt"
@@ -37,9 +37,10 @@ import (
 type (
 	// Graph is the PJRT compute graph.
 	Graph struct {
+		notimplemented.Function
 		plat       *pjrtplatform.Platform
-		bld        backend.Builder
-		parent     backend.Function
+		bld        compute.Builder
+		parent     compute.Function
 		builder    *xlabuilder.XlaBuilder
 		executable *pjrt.LoadedExecutable
 
@@ -58,26 +59,31 @@ type (
 )
 
 var (
-	_ backend.Function = (*Graph)(nil)
+	_ compute.Function = (*Graph)(nil)
 )
 
+func errNotImplemented(op compute.OpType) error {
+	return errors.Errorf("%s not implemented in the PJRT backend", op)
+}
+
 // New returns a new graph.
-func New(plat *pjrtplatform.Platform, bld backend.Builder, funcName string) *Graph {
+func New(plat *pjrtplatform.Platform, bld compute.Builder, funcName string) *Graph {
 	return newGraph(plat, bld, nil, xlabuilder.New(funcName))
 }
 
-func newGraph(plat *pjrtplatform.Platform, bld backend.Builder, parent backend.Function, builder *xlabuilder.XlaBuilder) *Graph {
+func newGraph(plat *pjrtplatform.Platform, bld compute.Builder, parent compute.Function, builder *xlabuilder.XlaBuilder) *Graph {
 	return &Graph{
-		plat:    plat,
-		bld:     bld,
-		parent:  parent,
-		builder: builder,
+		Function: notimplemented.Function{ErrFn: errNotImplemented},
+		plat:     plat,
+		bld:      bld,
+		parent:   parent,
+		builder:  builder,
 	}
 }
 
 // Compile compiles the graph using the outputs recorded via Return().
 // Returns a function that will be run on a device given some inputs.
-func (g *Graph) Compile(dev compute.DeviceNum) (backend.Executable, error) {
+func (g *Graph) Compile(dev compute.DeviceNum) (compute.Executable, error) {
 	if !g.returned {
 		return nil, errors.Errorf("Return() was not called for function %q before Compile()", g.Name())
 	}
@@ -114,17 +120,17 @@ func (g *Graph) Name() string {
 }
 
 // Builder returns the builder of which this function is part of.
-func (g *Graph) Builder() backend.Builder {
+func (g *Graph) Builder() compute.Builder {
 	return g.bld
 }
 
 // Parent returns the parent function of the current function.
-func (g *Graph) Parent() backend.Function {
+func (g *Graph) Parent() compute.Function {
 	return g.parent
 }
 
 // Closure returns a new local function within this function.
-func (g *Graph) Closure() (backend.Function, error) {
+func (g *Graph) Closure() (compute.Function, error) {
 	builder := g.builder.CreateSubBuilder(g.builder.Name() + ".closure")
 	return newGraph(g.plat, g.bld, g, builder), nil
 }
@@ -516,7 +522,7 @@ func (g *Graph) DotGeneral(lhs compute.Value, lhsContractingAxes, lhsBatchAxes [
 }
 
 // Call invokes another function with the given inputs.
-func (g *Graph) Call(f backend.Function, inputs ...compute.Value) ([]compute.Value, error) {
+func (g *Graph) Call(f compute.Function, inputs ...compute.Value) ([]compute.Value, error) {
 	pjrtsg := f.(*Graph)
 	subcomp, err := g.xlaSubcomputation(pjrtsg, len(pjrtsg.outputs) != 1)
 	if err != nil {
@@ -540,7 +546,7 @@ func (g *Graph) Call(f backend.Function, inputs ...compute.Value) ([]compute.Val
 }
 
 // NewFunction creates a new named function within the builder.
-func (g *Graph) NewFunction(name string) (backend.Function, error) {
+func (g *Graph) NewFunction(name string) (compute.Function, error) {
 	builder := g.builder.CreateSubBuilder(name)
 	return newGraph(g.plat, g.bld, nil, builder), nil
 }
@@ -606,7 +612,7 @@ func (sub *subGraph) String() string {
 }
 
 // While returns a while loop node.
-func (g *Graph) While(cond, body backend.Function, initialState ...compute.Value) ([]compute.Value, error) {
+func (g *Graph) While(cond, body compute.Function, initialState ...compute.Value) ([]compute.Value, error) {
 	useTuple := len(initialState) != 1
 	condSG, err := g.xlaSubcomputation(cond.(*Graph), false)
 	if err != nil {

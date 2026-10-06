@@ -18,12 +18,11 @@ import (
 	"fmt"
 	"unsafe"
 
-	"google3/third_party/golang/github_com/gomlx/compute/v/v0/compute"
+	"github.com/gomlx/compute"
 	"github.com/gomlx/compute/dtypes"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gomlx/gopjrt/pjrt"
 	"github.com/gomlx/gopjrt/xlabuilder"
-	"github.com/gx-org/backend"
 )
 
 type (
@@ -41,7 +40,7 @@ type (
 	}
 )
 
-var _ backend.Buffer = (*Handle)(nil)
+var _ compute.Buffer = (*Handle)(nil)
 
 // NewHandle returns a new platform handle given a PJRT buffer.
 func NewHandle(plat *Platform, dev compute.DeviceNum, buffer *pjrt.Buffer, sh shapes.Shape) (*Handle, error) {
@@ -54,7 +53,7 @@ func NewHandle(plat *Platform, dev compute.DeviceNum, buffer *pjrt.Buffer, sh sh
 }
 
 // Backend returns the backend that owns this buffer.
-func (h *Handle) Backend() backend.Backend {
+func (h *Handle) Backend() compute.Backend {
 	return h.plat.Backend()
 }
 
@@ -74,7 +73,7 @@ func (h *Handle) OnDeviceBuffer() *pjrt.Buffer {
 }
 
 // CopyToDevice copies the buffer to another device on the same backend.
-func (h *Handle) CopyToDevice(dev compute.DeviceNum) (backend.Buffer, error) {
+func (h *Handle) CopyToDevice(dev compute.DeviceNum) (compute.Buffer, error) {
 	return h.toDevice(dev)
 }
 
@@ -118,7 +117,7 @@ func (h *Handle) String() string {
 }
 
 // ToDevice sends a generic buffer to a device.
-func ToDevice(plat *Platform, dev compute.DeviceNum, handle backend.Buffer) (*Handle, error) {
+func ToDevice(plat *Platform, dev compute.DeviceNum, handle compute.Buffer) (*Handle, error) {
 	if handleT, ok := handle.(*Handle); ok && handleT.plat == plat {
 		return handleT.toDevice(dev)
 	}
