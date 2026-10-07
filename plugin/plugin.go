@@ -18,14 +18,13 @@ package plugin
 import (
 	"fmt"
 
-	"github.com/gomlx/gopjrt/pjrt"
+	"github.com/gomlx/go-xla/compute/xla"
 	"github.com/gx-org/gx/api"
 	"github.com/gx-org/gx/build/builder"
 	"github.com/gx-org/gx/build/importers/embedpkg"
 	"github.com/gx-org/gx/build/importers"
 	"github.com/gx-org/gx/build/importers/localfs"
 	"github.com/gx-org/gx/stdlib"
-	"github.com/gx-org/xlapjrt/backend"
 )
 
 // New returns a new PJRT runtime given a plugin name.
@@ -51,13 +50,9 @@ func New(name string) (*api.Runtime, error) {
 
 // NewWithBuilder creates PJRT GX runtime given a GX builder, a plugin name, and client options.
 func NewWithBuilder(name string, bld *builder.Builder) (*api.Runtime, error) {
-	plugin, err := pjrt.GetPlugin(name)
+	pjrtBackend, err := xla.New(name)
 	if err != nil {
 		return nil, fmt.Errorf("cannot load PJRT plugin %q: %v", name, err)
-	}
-	pjrtBackend, err := backend.New(bld, plugin)
-	if err != nil {
-		return nil, err
 	}
 	return api.NewRuntime(pjrtBackend, bld), nil
 }
