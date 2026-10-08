@@ -19,10 +19,11 @@ import (
 
 	"github.com/gx-org/xlapjrt/plugin"
 	"github.com/gx-org/gx/golang/binder/cgx/testing/async"
+	"github.com/gx-org/gx/golang/binder/cgx/tests/gocgx"
 )
 
 func TestAsyncCGXGoBackend(t *testing.T) {
-	rtm, err := plugin.NewWithBuilder("cpu", async.NewBuilder())
+	rtm, err := plugin.NewWithBuilder("cpu", gocgx.NewBuilder())
 	if err != nil {
 		t.Fatal(err)
 	}
