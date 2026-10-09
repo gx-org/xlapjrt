@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	"github.com/gx-org/xlapjrt/plugin"
-	"github.com/gx-org/gx/golang/binder/cgx/testing/async"
+	"github.com/gx-org/gx/golang/binder/cgx/tests/async"
 	"github.com/gx-org/gx/golang/binder/cgx/tests/gocgx"
 )
 
