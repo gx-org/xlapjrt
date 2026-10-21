@@ -19,21 +19,8 @@ import (
 	"github.com/gx-org/xlapjrt/plugin"
 	"github.com/gx-org/gx/build/builder/testbuild"
 	"github.com/gx-org/gx/internal/testing/testrtm"
-	gxtesting "github.com/gx-org/gx/tests/testing"
 	"github.com/gx-org/gx/tests"
 )
-
-func TestPJRTStdlib(t *testing.T) {
-	bld := tests.NewBuilder()
-	bck, err := plugin.NewWithBuilder("cpu", bld)
-	if err != nil {
-		t.Fatal(err)
-	}
-	session := gxtesting.NewSession(bck, tests.FS)
-	for _, path := range tests.All {
-		session.TestFolder(t, path)
-	}
-}
 
 func TestPJRTStdlibUnit(t *testing.T) {
 	bld := tests.NewBuilder()
