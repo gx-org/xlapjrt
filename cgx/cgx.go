@@ -34,7 +34,12 @@ func cgx_builder_new_static_xlapjrt() C.cgx_builder {
 
 //export cgx_runtime_new_xlapjrt
 func cgx_runtime_new_xlapjrt(cbld C.cgx_builder, cPluginName *C.cchar_t) C.struct_cgx_runtime_new_result {
-	bld := handle.Unwrap[*builder.Builder](handle.Handle(uintptr(cbld)))
+	bld, err := handle.Unwrap[*builder.Builder](handle.Handle(uintptr(cbld)))
+	if err != nil {
+		return C.struct_cgx_runtime_new_result{
+			error: (C.cgx_error)(handle.Wrap[error](err)),
+		}
+	}
 	rtm, err := plugin.NewWithBuilder(C.GoString(cPluginName), bld)
 	return C.struct_cgx_runtime_new_result{
 		runtime: (C.cgx_runtime)(handle.Wrap[*api.Runtime](rtm)),
